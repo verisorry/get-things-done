@@ -2,13 +2,16 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
-import type { InboxItem } from "@/lib/types"
+import { useDemoContext } from "@/lib/demo-context"
+import type { InboxItem, TaskTier } from "@/lib/types"
 
 export function useInbox() {
+  const demo = useDemoContext()
   const [items, setItems] = useState<InboxItem[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!demo)
 
   useEffect(() => {
+    if (demo) return
     setLoading(true)
     const supabase = createClient()
     supabase
@@ -21,7 +24,9 @@ export function useInbox() {
         setItems((data as InboxItem[]) ?? [])
         setLoading(false)
       })
-  }, [])
+  }, [demo])
+
+  const demoItems = demo ? demo.state.inbox : items
 
   const addItem = useCallback((title: string, tag: string | null) => {
     const item: InboxItem = {
@@ -32,8 +37,13 @@ export function useInbox() {
       delegated_date: null,
       delegated_at: null,
     }
-    setItems((prev) => [...prev, item])
 
+    if (demo) {
+      demo.setInbox((prev) => [...prev, item])
+      return
+    }
+
+    setItems((prev) => [...prev, item])
     const supabase = createClient()
     supabase
       .from("inbox_items")
@@ -41,9 +51,32 @@ export function useInbox() {
       .then(({ error }) => {
         if (error) console.error("Failed to add inbox item:", error)
       })
-  }, [])
+  }, [demo])
 
   const delegateItem = useCallback((id: string, date: string) => {
+    if (demo) {
+      let found: InboxItem | undefined
+      demo.setInbox((prev) => {
+        found = prev.find((i) => i.id === id)
+        return prev.filter((i) => i.id !== id)
+      })
+      if (found) {
+        demo.setTasks((prev) => [...prev, {
+          id: crypto.randomUUID(),
+          date,
+          title: found!.title,
+          tier: "other" as TaskTier,
+          time_start: null,
+          time_end: null,
+          completed: false,
+          notes: null,
+          position: Math.floor(Date.now() / 1000) % 2000000000,
+          created_at: new Date().toISOString(),
+        }])
+      }
+      return
+    }
+
     let found: InboxItem | undefined
     setItems((prev) => {
       found = prev.find((i) => i.id === id)
@@ -75,11 +108,15 @@ export function useInbox() {
           if (error) console.error("Failed to create task from inbox:", error)
         })
     }
-  }, [])
+  }, [demo])
 
   const deleteItem = useCallback((id: string) => {
-    setItems((prev) => prev.filter((i) => i.id !== id))
+    if (demo) {
+      demo.setInbox((prev) => prev.filter((i) => i.id !== id))
+      return
+    }
 
+    setItems((prev) => prev.filter((i) => i.id !== id))
     const supabase = createClient()
     supabase
       .from("inbox_items")
@@ -88,11 +125,15 @@ export function useInbox() {
       .then(({ error }) => {
         if (error) console.error("Failed to delete inbox item:", error)
       })
-  }, [])
+  }, [demo])
 
   const markDelegated = useCallback((id: string, date: string) => {
-    setItems((prev) => prev.filter((i) => i.id !== id))
+    if (demo) {
+      demo.setInbox((prev) => prev.filter((i) => i.id !== id))
+      return
+    }
 
+    setItems((prev) => prev.filter((i) => i.id !== id))
     const supabase = createClient()
     supabase
       .from("inbox_items")
@@ -101,7 +142,7 @@ export function useInbox() {
       .then(({ error }) => {
         if (error) console.error("Failed to mark inbox item delegated:", error)
       })
-  }, [])
+  }, [demo])
 
-  return { items, loading, addItem, delegateItem, deleteItem, markDelegated }
+  return { items: demoItems, loading, addItem, delegateItem, deleteItem, markDelegated }
 }
