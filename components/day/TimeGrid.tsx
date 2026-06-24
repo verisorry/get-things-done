@@ -1,6 +1,10 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+
+function setCursor(cursor: string) {
+  document.body.style.cursor = cursor
+}
 import { cn } from "@/lib/utils"
 import type { Task, TaskTier } from "@/lib/types"
 
@@ -153,7 +157,7 @@ export function TimeGrid({
     function onMouseUp() {
       document.removeEventListener("mousemove", onMouseMove)
       document.removeEventListener("mouseup", onMouseUp)
-      document.body.style.cursor = ""
+      setCursor("")
       if (resizeRef.current) {
         onDropTask(
           resizeRef.current.taskId,
@@ -165,7 +169,7 @@ export function TimeGrid({
       setResizing(null)
     }
 
-    document.body.style.cursor = "ns-resize"
+    setCursor("ns-resize")
     document.addEventListener("mousemove", onMouseMove)
     document.addEventListener("mouseup", onMouseUp)
   }
@@ -210,7 +214,7 @@ export function TimeGrid({
     function onMouseUp() {
       document.removeEventListener("mousemove", onMouseMove)
       document.removeEventListener("mouseup", onMouseUp)
-      document.body.style.cursor = ""
+      setCursor("")
       if (moveRef.current) {
         const s = moveSlotRef.current
         onDropTask(
@@ -223,7 +227,7 @@ export function TimeGrid({
       setMoving(null)
     }
 
-    document.body.style.cursor = "grab"
+    setCursor("grab")
     document.addEventListener("mousemove", onMouseMove)
     document.addEventListener("mouseup", onMouseUp)
   }

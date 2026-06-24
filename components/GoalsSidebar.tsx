@@ -1,6 +1,6 @@
 "use client"
 
-import { useLayoutEffect, useState } from "react"
+import { useEffect, useState, useSyncExternalStore } from "react"
 import { format, getDaysInMonth } from "date-fns"
 import {
   ChevronLeft,
@@ -34,9 +34,22 @@ const PANEL_W = 300
 const TOTAL_W = RAIL_W + PANEL_W
 const STORAGE_KEY = "sidebar-panel"
 
+let panelValue: Panel | null = null
+const panelListeners = new Set<() => void>()
+function subscribePanelStore(cb: () => void) {
+  panelListeners.add(cb)
+  return () => panelListeners.delete(cb)
+}
+function getPanelSnapshot() { return panelValue }
+function getPanelServerSnapshot() { return null as Panel | null }
+function setPanelValue(v: Panel | null) {
+  panelValue = v
+  panelListeners.forEach((cb) => cb())
+}
+
 export function GoalsSidebar() {
   const { theme, toggle: toggleTheme } = useTheme()
-  const [activePanel, setActivePanel] = useState<Panel | null>(null)
+  const activePanel = useSyncExternalStore(subscribePanelStore, getPanelSnapshot, getPanelServerSnapshot)
   const [ready, setReady] = useState(false)
 
   const now = new Date()
@@ -52,15 +65,15 @@ export function GoalsSidebar() {
   const [newTitle, setNewTitle] = useState("")
   const [newTarget, setNewTarget] = useState("")
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored === "goals" || stored === "meals") setActivePanel(stored)
+    if (stored === "goals" || stored === "meals") setPanelValue(stored)
     requestAnimationFrame(() => setReady(true))
   }, [])
 
   function togglePanel(panel: Panel) {
     const next = activePanel === panel ? null : panel
-    setActivePanel(next)
+    setPanelValue(next)
     localStorage.setItem(STORAGE_KEY, next ?? "")
   }
 
