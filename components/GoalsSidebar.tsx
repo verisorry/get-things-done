@@ -120,6 +120,11 @@ export function GoalsSidebar() {
       <div className="flex h-full" style={{ width: TOTAL_W }}>
         {/* Icon rail */}
         <div className="flex w-12 shrink-0 flex-col items-center border-r border-border pt-3 pb-3">
+          <img
+            src="/logo.png"
+            alt="Get Things Done"
+            className="mb-3 size-7 rounded-lg"
+          />
           <div className="flex flex-col items-center gap-1">
             <button
               onClick={() => togglePanel("goals")}
