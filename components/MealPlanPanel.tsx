@@ -138,7 +138,7 @@ function MealCell({
           className={cn(
             "truncate rounded px-1.5 py-1 text-left text-[10px] transition-colors",
             data
-              ? "bg-secondary/70 font-medium text-foreground"
+              ? "bg-secondary font-medium text-foreground"
               : "text-muted-foreground/40 hover:bg-secondary/50"
           )}
         >

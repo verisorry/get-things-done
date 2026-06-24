@@ -2,6 +2,12 @@
 
 A personal productivity web app that digitises a physical "get things done" planner. Day-by-day task planning with time blocking, a four-tier task hierarchy, monthly goals, meal planning, and a flexible inbox.
 
+## Demo
+
+Try the app in demo mode with sample data — no account needed.
+
+This is a personal productivity tool. If you'd like access to the full app, email me at **fang.silvia2026@gmail.com**.
+
 ## Features
 
 **Daily View** — An infinite horizontal scroll canvas showing day panels. Each day has a task list on the left and a time grid on the right. Scroll to navigate between days. Today auto-centers on load.
@@ -22,11 +28,14 @@ A personal productivity web app that digitises a physical "get things done" plan
 
 **Dark Mode** — Defaults to system preference. Toggle with the sun/moon icon at the bottom of the left sidebar. Dark mode uses a frosted glass aesthetic.
 
+**Demo Mode** — Visit with `?demo=true` to explore the app with sample data. All changes are in-memory and reset on refresh. No account required.
+
 ## Tech Stack
 
 - **Framework:** [Next.js 15](https://nextjs.org) (App Router)
 - **UI:** [React 18](https://react.dev), [Tailwind CSS v4](https://tailwindcss.com), [shadcn/ui](https://ui.shadcn.com)
 - **Database:** [Supabase](https://supabase.com) (Postgres)
+- **Auth:** [Supabase Auth](https://supabase.com/docs/guides/auth) (email/password)
 - **Language:** TypeScript
 
 ## Getting Started
@@ -64,6 +73,7 @@ A personal productivity web app that digitises a physical "get things done" plan
    -- Copy contents of supabase/migrations/20260624000000_initial_schema.sql
    -- Then: supabase/migrations/20260624000003_inbox_items.sql
    -- Then: supabase/migrations/20260624000004_inbox_tags.sql
+   -- Then: supabase/migrations/20260624100000_add_user_id_and_rls.sql
    ```
 
    Or if using the Supabase CLI:
@@ -73,7 +83,11 @@ A personal productivity web app that digitises a physical "get things done" plan
    supabase db push
    ```
 
-4. **Run**
+4. **Create your user account**
+
+   In the Supabase dashboard, go to Authentication > Users > Add user. Create an account with email and password.
+
+5. **Run**
 
    ```bash
    pnpm dev
@@ -85,8 +99,13 @@ A personal productivity web app that digitises a physical "get things done" plan
 
 ```
 app/
-  layout.tsx          # Root layout — sidebar + inbox + day canvas
-  page.tsx            # Infinite scroll day canvas with virtualization
+  layout.tsx          # Root layout — theme + demo wrapper
+  (app)/
+    layout.tsx        # App shell — sidebar + inbox + day canvas
+    page.tsx          # Infinite scroll day canvas with virtualization
+  (auth)/
+    auth/login/       # Login page
+    auth/callback/    # OAuth callback handler
   globals.css         # Design tokens, theme variables, gradient background
 
 components/
@@ -99,7 +118,8 @@ components/
   GoalsSidebar.tsx    # Left icon rail + expandable goals/meals panels
   InboxPanel.tsx      # Resizable inbox with tag sections and delegation
   MealPlanPanel.tsx   # Weekly meal grid for the sidebar
-  TopBar.tsx          # Date display and Today button
+  TopBar.tsx          # Date display, Today button, demo badge
+  DemoWrapper.tsx     # Wraps app in DemoProvider when ?demo=true
   ThemeProvider.tsx   # Dark mode context with localStorage persistence
 
 hooks/
@@ -111,17 +131,23 @@ hooks/
 
 lib/
   types.ts            # Shared TypeScript interfaces
+  demo-context.tsx    # Demo mode context provider + in-memory state
+  demo-data.ts        # Sample seed data for demo mode
   supabase/           # Supabase client (browser + server + middleware)
 ```
 
 ## Data Model
 
-Four tables in Postgres:
+Four tables in Postgres, all with Row Level Security:
 
 - **tasks** — Daily tasks with tier, time blocks, completion, notes
 - **monthly_goals** — Recurring goals with completed_dates array
 - **meal_plan** — Lunch/dinner per date with notes
 - **inbox_items** — Unscheduled items with optional tags and delegation tracking
+
+## AI Disclaimer
+
+Parts of this project, including this entire README, was built with the assistance of AI agents. All code has been reviewed and tested by the developer.
 
 ## License
 

@@ -21,7 +21,7 @@ const HOURS = Array.from(
 const TOTAL_SLOTS = HOURS.length * 2
 
 const TIER_BLOCK: Record<TaskTier, string> = {
-  focus: "bg-tier-focus-block text-white [&_span]:text-white/70",
+  focus: "bg-tier-focus-block text-white",
   important: "bg-tier-important-block",
   immediate: "bg-tier-immediate-block",
   other: "bg-tier-other-block",

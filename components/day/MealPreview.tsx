@@ -67,8 +67,8 @@ function MealChip({
         className={cn(
           "flex-1 truncate rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
           data
-            ? "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-            : "border border-dashed border-border text-muted-foreground hover:bg-secondary/50"
+            ? "bg-black/[0.04] text-secondary-foreground hover:bg-black/[0.07] dark:bg-white/[0.08] dark:hover:bg-white/[0.12]"
+            : "border border-dashed border-black/10 text-muted-foreground hover:bg-black/[0.04] dark:border-white/10 dark:hover:bg-white/[0.06]"
         )}
       >
         {data?.title ?? `+ ${label}`}
