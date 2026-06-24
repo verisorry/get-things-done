@@ -1,36 +1,128 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Get Things Done
+
+A personal productivity web app that digitises a physical "get things done" planner. Day-by-day task planning with time blocking, a four-tier task hierarchy, monthly goals, meal planning, and a flexible inbox.
+
+## Features
+
+**Daily View** — An infinite horizontal scroll canvas showing day panels. Each day has a task list on the left and a time grid on the right. Scroll to navigate between days. Today auto-centers on load.
+
+**Four-Tier Task Hierarchy**
+- **Focus** — What will make today a win
+- **Important** — What will affect your goals
+- **Immediate** — What must be done today
+- **Other** — Nice to complete
+
+**Time Blocking** — Drag tasks from the task list onto the time grid to schedule them. Drag blocks to move them. Resize from the bottom edge to change duration. All snaps to 30-minute increments.
+
+**Inbox** — A dump box for unscheduled items. Tag items with `@tag` syntax (e.g., `Buy groceries @personal`). Items are grouped by tag as sections. Drag items onto any day panel to schedule them under a specific tier. Use the calendar icon to delegate to a specific date.
+
+**Monthly Goals** — Track recurring goals with a day-by-day completion grid. Set optional target counts. Navigate between months. Lives in the collapsible left sidebar.
+
+**Meal Planning** — Lunch and dinner chips at the bottom of each day panel. A weekly meal grid in the sidebar for grocery planning. Click any cell to edit via popover.
+
+**Dark Mode** — Defaults to system preference. Toggle with the sun/moon icon at the bottom of the left sidebar. Dark mode uses a frosted glass aesthetic.
+
+## Tech Stack
+
+- **Framework:** [Next.js 15](https://nextjs.org) (App Router)
+- **UI:** [React 18](https://react.dev), [Tailwind CSS v4](https://tailwindcss.com), [shadcn/ui](https://ui.shadcn.com)
+- **Database:** [Supabase](https://supabase.com) (Postgres)
+- **Language:** TypeScript
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Node.js 18+
+- [pnpm](https://pnpm.io)
+- A [Supabase](https://supabase.com) project
+
+### Setup
+
+1. **Clone and install**
+
+   ```bash
+   git clone <repo-url>
+   cd get-things-done
+   pnpm install
+   ```
+
+2. **Environment variables**
+
+   Create `.env.local` with your Supabase credentials:
+
+   ```
+   NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-anon-key
+   ```
+
+3. **Database setup**
+
+   Run the migration SQL in your Supabase dashboard (SQL Editor):
+
+   ```sql
+   -- Copy contents of supabase/migrations/20260624000000_initial_schema.sql
+   -- Then: supabase/migrations/20260624000003_inbox_items.sql
+   -- Then: supabase/migrations/20260624000004_inbox_tags.sql
+   ```
+
+   Or if using the Supabase CLI:
+
+   ```bash
+   supabase link --project-ref <your-project-ref>
+   supabase db push
+   ```
+
+4. **Run**
+
+   ```bash
+   pnpm dev
+   ```
+
+   Open [http://localhost:3000](http://localhost:3000).
+
+## Project Structure
+
+```
+app/
+  layout.tsx          # Root layout — sidebar + inbox + day canvas
+  page.tsx            # Infinite scroll day canvas with virtualization
+  globals.css         # Design tokens, theme variables, gradient background
+
+components/
+  day/
+    DayPanel.tsx      # Single day card — header, tasks, time grid, meals
+    TaskList.tsx      # Tiered task sections with inline add and drag-drop
+    TaskCard.tsx      # Individual task — checkbox, edit popover, drag handle
+    TimeGrid.tsx      # 30-min time slots with drag scheduling and resize
+    MealPreview.tsx   # Lunch/dinner chips at bottom of task column
+  GoalsSidebar.tsx    # Left icon rail + expandable goals/meals panels
+  InboxPanel.tsx      # Resizable inbox with tag sections and delegation
+  MealPlanPanel.tsx   # Weekly meal grid for the sidebar
+  TopBar.tsx          # Date display and Today button
+  ThemeProvider.tsx   # Dark mode context with localStorage persistence
+
+hooks/
+  use-day.ts          # Task CRUD for a single date
+  use-inbox.ts        # Inbox items with tags and delegation
+  use-meal-plan.ts    # Single-day meal plan
+  use-week-meal-plan.ts # Week-range meal plan
+  use-monthly-goals.ts  # Monthly goals with completion tracking
+
+lib/
+  types.ts            # Shared TypeScript interfaces
+  supabase/           # Supabase client (browser + server + middleware)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Data Model
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Four tables in Postgres:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **tasks** — Daily tasks with tier, time blocks, completion, notes
+- **monthly_goals** — Recurring goals with completed_dates array
+- **meal_plan** — Lunch/dinner per date with notes
+- **inbox_items** — Unscheduled items with optional tags and delegation tracking
 
-## Learn More
+## License
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+MIT
