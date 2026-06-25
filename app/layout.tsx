@@ -7,6 +7,9 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Get Things Done",
   description: "Personal productivity planner",
+  appleWebApp: {
+    title: "Get Things Done",
+  },
 };
 
 export const viewport: Viewport = {
