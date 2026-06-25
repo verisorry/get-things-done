@@ -8,8 +8,8 @@ function setCursor(cursor: string) {
 import { cn } from "@/lib/utils"
 import type { Task, TaskTier } from "@/lib/types"
 
-export const START_HOUR = 7
-export const END_HOUR = 23
+export const START_HOUR = 0
+export const END_HOUR = 24
 const SLOT_HEIGHT = 28
 const DEFAULT_DURATION_SLOTS = 2
 
@@ -69,6 +69,12 @@ export function TimeGrid({
 }: TimeGridProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const gridRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollTop = 9 * 2 * SLOT_HEIGHT
+    }
+  }, [])
   const [dragSlot, setDragSlot] = useState<number | null>(null)
 
   const [resizing, setResizing] = useState<{
