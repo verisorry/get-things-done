@@ -64,11 +64,11 @@ export function TaskCard({ task, onUpdate, onDelete, onSendToInbox }: TaskCardPr
       draggable
       onDragStart={handleDragStart}
       className={cn(
-        "group flex cursor-grab items-center gap-1.5 px-1.5 py-2.5 active:cursor-grabbing",
+        "group flex cursor-grab items-start gap-1.5 px-1.5 py-2.5 active:cursor-grabbing",
         task.completed && "opacity-50"
       )}
     >
-      <GripVertical className="size-3 shrink-0 text-muted-foreground/40 opacity-0 transition-opacity group-hover:opacity-100" />
+      <GripVertical className="mt-px size-3 shrink-0 text-muted-foreground/40 opacity-0 transition-opacity group-hover:opacity-100" />
 
       <Checkbox
         checked={task.completed}
@@ -76,7 +76,7 @@ export function TaskCard({ task, onUpdate, onDelete, onSendToInbox }: TaskCardPr
           onUpdate(task.id, { completed: checked === true })
         }
         className={cn(
-          "shrink-0",
+          "mt-px shrink-0",
           TIER_CHECKBOX[task.tier],
           "data-checked:border-completed data-checked:bg-completed"
         )}
