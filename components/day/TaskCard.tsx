@@ -86,7 +86,7 @@ export function TaskCard({ task, onUpdate, onDelete, onSendToInbox }: TaskCardPr
         <PopoverTrigger asChild>
           <button
             className={cn(
-              "flex-1 truncate text-left text-sm",
+              "flex-1 text-left text-sm break-words",
               task.completed && "line-through text-muted-foreground",
               !task.title && "text-muted-foreground"
             )}

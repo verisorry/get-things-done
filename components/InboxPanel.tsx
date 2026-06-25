@@ -235,9 +235,9 @@ function InboxRow({
         e.dataTransfer.setData("application/inbox-title", item.title)
         e.dataTransfer.effectAllowed = "move"
       }}
-      className="group flex cursor-grab items-center gap-2 rounded-lg px-2 py-2 hover:bg-secondary/50 active:cursor-grabbing"
+      className="group flex cursor-grab items-start gap-2 rounded-lg px-2 py-2 hover:bg-secondary/50 active:cursor-grabbing"
     >
-      <span className="flex-1 truncate text-sm">{item.title}</span>
+      <span className="flex-1 break-words text-sm">{item.title}</span>
 
       <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
         <Popover open={open} onOpenChange={setOpen}>

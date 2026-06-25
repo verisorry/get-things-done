@@ -297,7 +297,7 @@ export function TimeGrid({
                 height: Math.max(displayHeight, SLOT_HEIGHT),
               }}
             >
-              <span className="block truncate text-[11px] font-semibold leading-tight">
+              <span className="block text-[11px] font-semibold leading-tight">
                 {task.title}
               </span>
               <span className="block text-[9px] text-muted-foreground">
