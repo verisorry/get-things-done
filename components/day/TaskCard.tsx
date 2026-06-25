@@ -82,71 +82,73 @@ export function TaskCard({ task, onUpdate, onDelete, onSendToInbox }: TaskCardPr
         )}
       />
 
-      <Popover open={open} onOpenChange={handleOpenChange}>
-        <PopoverTrigger asChild>
-          <button
-            className={cn(
-              "flex-1 text-left text-sm break-words",
-              task.completed && "line-through text-muted-foreground",
-              !task.title && "text-muted-foreground"
+      <div className="flex flex-1 items-center gap-1.5 min-w-0">
+        <Popover open={open} onOpenChange={handleOpenChange}>
+          <PopoverTrigger asChild>
+            <button
+              className={cn(
+                "flex-1 text-left text-sm break-words min-w-0",
+                task.completed && "line-through text-muted-foreground",
+                !task.title && "text-muted-foreground"
+              )}
+            >
+              {task.title || "New task..."}
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-64 gap-2">
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault()
+                  handleOpenChange(false)
+                }
+              }}
+              placeholder="Task title"
+              autoFocus
+            />
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Notes"
+              className="min-h-10 text-xs"
+            />
+            {onSendToInbox && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  onSendToInbox(task.id, task.title)
+                  setOpen(false)
+                }}
+                className="w-full justify-start text-muted-foreground"
+              >
+                <Inbox className="mr-1.5 size-3.5" />
+                Send to Inbox
+              </Button>
             )}
-          >
-            {task.title || "New task..."}
-          </button>
-        </PopoverTrigger>
-        <PopoverContent align="start" className="w-64 gap-2">
-          <Input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault()
-                handleOpenChange(false)
-              }
-            }}
-            placeholder="Task title"
-            autoFocus
-          />
-          <Textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Notes"
-            className="min-h-10 text-xs"
-          />
-          {onSendToInbox && (
             <Button
               variant="ghost"
               size="sm"
               onClick={() => {
-                onSendToInbox(task.id, task.title)
+                onDelete(task.id)
                 setOpen(false)
               }}
-              className="w-full justify-start text-muted-foreground"
+              className="w-full justify-start text-destructive hover:text-destructive"
             >
-              <Inbox className="mr-1.5 size-3.5" />
-              Send to Inbox
+              <Trash2 className="mr-1.5 size-3.5" />
+              Delete task
             </Button>
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              onDelete(task.id)
-              setOpen(false)
-            }}
-            className="w-full justify-start text-destructive hover:text-destructive"
-          >
-            <Trash2 className="mr-1.5 size-3.5" />
-            Delete task
-          </Button>
-        </PopoverContent>
-      </Popover>
+          </PopoverContent>
+        </Popover>
 
-      {hasTime && (
-        <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
-          {task.time_start!.slice(0, 5)}
-        </span>
-      )}
+        {hasTime && (
+          <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
+            {task.time_start!.slice(0, 5)}
+          </span>
+        )}
+      </div>
 
       <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
         {onSendToInbox && (
