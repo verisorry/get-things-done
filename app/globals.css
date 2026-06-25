@@ -149,12 +149,12 @@
   * {
     @apply border-border outline-ring/50;
   }
-  body {
+  html, body {
     @apply text-foreground;
     background: linear-gradient(160deg, #eef0f5 0%, #e8ebf3 40%, #eceef4 100%);
     background-attachment: fixed;
   }
-  .dark body {
+  html.dark, .dark body {
     background: linear-gradient(160deg, #0e0e12 0%, #111115 50%, #131318 100%);
     background-attachment: fixed;
   }
