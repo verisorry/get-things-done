@@ -82,7 +82,7 @@ export function TaskCard({ task, onUpdate, onDelete, onSendToInbox }: TaskCardPr
         )}
       />
 
-      <div className="flex flex-1 items-center gap-1.5 min-w-0">
+      <div className="flex flex-1 items-baseline gap-1.5 min-w-0">
         <Popover open={open} onOpenChange={handleOpenChange}>
           <PopoverTrigger asChild>
             <button

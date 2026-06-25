@@ -1,8 +1,10 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
 import { format, addDays, getMonth, getYear } from "date-fns"
-import { CalendarDays, CheckSquare, Inbox, Target, Trash2 } from "lucide-react"
+import Image from "next/image"
+import { CalendarDays, CheckSquare, Inbox, LogOut, Target, Trash2 } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -16,6 +18,8 @@ import {
 import { useDay } from "@/hooks/use-day"
 import { useInbox } from "@/hooks/use-inbox"
 import { useMonthlyGoals } from "@/hooks/use-monthly-goals"
+import { useDemoContext } from "@/lib/demo-context"
+import { createClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
 import type { Task, TaskTier, InboxItem, MonthlyGoal } from "@/lib/types"
 
@@ -47,12 +51,28 @@ function parseInput(value: string): { title: string; tag: string | null } {
 
 export function MobileApp() {
   const [tab, setTab] = useState<"tasks" | "inbox">("tasks")
+  const demo = useDemoContext()
+  const router = useRouter()
+
+  async function handleSignOut() {
+    await createClient().auth.signOut()
+    router.replace("/auth/login")
+  }
 
   return (
     <div className="flex h-full w-full flex-col">
       <div className="min-h-0 flex-1 overflow-y-auto">
         {tab === "tasks" ? <TasksTab /> : <InboxTab />}
       </div>
+
+      {!demo && (
+        <button
+          onClick={handleSignOut}
+          className="fixed top-[max(0.75rem,env(safe-area-inset-top))] right-4 z-50 flex size-8 items-center justify-center rounded-full text-muted-foreground/50 transition-colors hover:text-muted-foreground"
+        >
+          <LogOut className="size-4" />
+        </button>
+      )}
 
       <div className="pointer-events-none fixed right-0 bottom-[max(2rem,env(safe-area-inset-bottom))] left-0 z-50 flex justify-center">
         <Tabs value={tab} onValueChange={(v) => setTab(v as "tasks" | "inbox")} className="pointer-events-auto">
@@ -112,7 +132,10 @@ function TasksTab() {
   return (
     <div className="px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-36">
       <div className="mb-4">
-        <h1 className="text-2xl font-bold">{format(today, "EEEE")}</h1>
+        <div className="mb-1 flex items-center gap-2">
+          <Image src="/Logo.png" alt="GTD" width={28} height={28} className="rounded-[7px]" />
+          <h1 className="text-2xl font-bold">{format(today, "EEEE")}</h1>
+        </div>
         <p className="text-sm text-muted-foreground">{format(today, "MMMM d")}</p>
         {total > 0 && (
           <div className="mt-2 h-1 overflow-hidden rounded-full bg-secondary">
@@ -290,6 +313,7 @@ function InboxTab() {
     <div className="flex h-full flex-col">
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-5">
         <div className="mb-4 flex items-center gap-2">
+          <Image src="/Logo.png" alt="GTD" width={28} height={28} className="rounded-[7px]" />
           <h1 className="text-2xl font-bold">Inbox</h1>
           {items.length > 0 && (
             <Badge variant="secondary">{items.length}</Badge>

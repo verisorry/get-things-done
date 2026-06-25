@@ -330,12 +330,17 @@ export function TimeGrid({
                 height: Math.max(displayHeight, SLOT_HEIGHT),
               }}
             >
-              <span className="block text-[11px] font-semibold leading-tight">
-                {task.title}
-              </span>
-              <span className="block text-[9px] text-muted-foreground">
-                {formatTime(task.time_start!)}
-              </span>
+              {duration <= 1 ? (
+                <div className="flex items-baseline gap-1.5 overflow-hidden">
+                  <span className="truncate text-[11px] font-semibold leading-none">{task.title}</span>
+                  <span className="shrink-0 text-[9px] leading-none text-muted-foreground">{formatTime(task.time_start!)}</span>
+                </div>
+              ) : (
+                <>
+                  <span className="block text-[11px] font-semibold leading-tight">{task.title}</span>
+                  <span className="block text-[9px] text-muted-foreground">{formatTime(task.time_start!)}</span>
+                </>
+              )}
 
               <div
                 onMouseDown={(e) =>
