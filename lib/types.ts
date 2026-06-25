@@ -12,6 +12,7 @@ export interface Task {
   completed: boolean
   notes: string | null
   position: number
+  source: string | null
   created_at: string
 }
 

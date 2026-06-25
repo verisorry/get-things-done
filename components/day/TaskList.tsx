@@ -1,8 +1,17 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { Plus, Target } from "lucide-react"
+import { GripVertical, Plus, Target, Utensils } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { TaskCard } from "@/components/day/TaskCard"
 import {
   Tooltip,
@@ -11,7 +20,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
-import type { Task, TaskTier, MonthlyGoal } from "@/lib/types"
+import type { Task, TaskTier, MonthlyGoal, MealPlan, MealType } from "@/lib/types"
 
 const TIERS: { key: TaskTier; label: string; tip: string; dot: string; glow: string }[] = [
   { key: "focus", label: "Focus", tip: "What will make today a win", dot: "bg-tier-focus", glow: "shadow-[0_0_6px_rgba(0,0,0,0.4)] dark:shadow-[0_0_6px_rgba(250,250,250,0.4)]" },
@@ -24,22 +33,28 @@ interface TaskListProps {
   tasks: Task[]
   date: string
   goals?: MonthlyGoal[]
+  lunch?: MealPlan | null
+  dinner?: MealPlan | null
   onAddTask: (tier: TaskTier, title: string) => void
   onUpdateTask: (id: string, updates: Partial<Task>) => void
   onDeleteTask: (id: string) => void
   onToggleGoal?: (goalId: string) => void
   onSendToInbox?: (id: string, title: string) => void
+  onSaveMeal?: (meal: MealType, title: string, notes: string | null) => void
 }
 
 export function TaskList({
   tasks,
   date,
   goals = [],
+  lunch,
+  dinner,
   onAddTask,
   onUpdateTask,
   onDeleteTask,
   onToggleGoal,
   onSendToInbox,
+  onSaveMeal,
 }: TaskListProps) {
   const [addingTier, setAddingTier] = useState<TaskTier | null>(null)
   const [addTitle, setAddTitle] = useState("")
@@ -108,7 +123,7 @@ export function TaskList({
   return (
     <div className="flex flex-col gap-3 p-4">
       {TIERS.map(({ key, label, tip, dot, glow }) => {
-        const tierTasks = tasks.filter((t) => t.tier === key)
+        const tierTasks = tasks.filter((t) => t.tier === key && !t.source)
         const active = tierTasks.filter((t) => !t.completed)
         const completed = tierTasks.filter((t) => t.completed)
 
@@ -161,6 +176,13 @@ export function TaskList({
                   onToggle={() => onToggleGoal?.(goal.id)}
                 />
               ))}
+
+              {key === "other" && onSaveMeal && (
+                <>
+                  <MealTaskRow meal="lunch" data={lunch ?? null} onSave={onSaveMeal} />
+                  <MealTaskRow meal="dinner" data={dinner ?? null} onSave={onSaveMeal} />
+                </>
+              )}
 
               {active.map((task) => (
                 <TaskCard
@@ -215,32 +237,123 @@ function GoalRow({
 }) {
   const done = goal.completed_dates.includes(date)
 
+  function handleDragStart(e: React.DragEvent) {
+    e.dataTransfer.setData("application/goal-id", goal.id)
+    e.dataTransfer.setData("application/goal-title", goal.title)
+    e.dataTransfer.effectAllowed = "move"
+  }
+
   return (
-    <button
-      onClick={onToggle}
+    <div
+      draggable
+      onDragStart={handleDragStart}
       className={cn(
-        "group flex w-full items-center gap-1.5 px-1.5 py-2.5 text-left transition-opacity",
+        "group flex w-full cursor-grab items-center gap-1.5 px-1.5 py-2.5 transition-opacity active:cursor-grabbing",
         done && "opacity-50"
       )}
     >
-      <div className="size-3 shrink-0 pl-[3px]" />
-      <div
+      <GripVertical className="size-3 shrink-0 text-muted-foreground/40 opacity-0 transition-opacity group-hover:opacity-100" />
+      <button
+        onClick={onToggle}
         className={cn(
           "flex size-4 shrink-0 items-center justify-center rounded-full border border-tier-important transition-colors",
           done && "border-completed bg-completed"
         )}
       >
         {done && <span className="text-[8px] text-white">✓</span>}
-      </div>
+      </button>
       <span
         className={cn(
-          "flex-1 break-words text-sm",
+          "flex-1 wrap-break-word text-left text-sm",
           done && "line-through text-muted-foreground"
         )}
       >
         {goal.title}
       </span>
       <Target className="size-3 shrink-0 text-tier-important opacity-40" />
-    </button>
+    </div>
+  )
+}
+
+function MealTaskRow({
+  meal,
+  data,
+  onSave,
+}: {
+  meal: MealType
+  data: MealPlan | null
+  onSave: (meal: MealType, title: string, notes: string | null) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [title, setTitle] = useState("")
+  const [notes, setNotes] = useState("")
+  const label = meal === "lunch" ? "Lunch" : "Dinner"
+
+  function handleDragStart(e: React.DragEvent) {
+    e.dataTransfer.setData("application/meal-title", data?.title ?? label)
+    e.dataTransfer.setData("application/meal-type", meal)
+    e.dataTransfer.effectAllowed = "move"
+  }
+
+  function handleOpenChange(isOpen: boolean) {
+    if (isOpen) {
+      setTitle(data?.title ?? "")
+      setNotes(data?.notes ?? "")
+    }
+    setOpen(isOpen)
+  }
+
+  function handleSave() {
+    const trimmed = title.trim()
+    if (trimmed) onSave(meal, trimmed, notes.trim() || null)
+    setOpen(false)
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <div
+        draggable
+        onDragStart={handleDragStart}
+        className="group flex cursor-grab items-center gap-1.5 px-1.5 py-2.5 active:cursor-grabbing"
+      >
+        <GripVertical className="size-3 shrink-0 text-muted-foreground/40 opacity-0 transition-opacity group-hover:opacity-100" />
+        <Utensils className="size-4 shrink-0 text-muted-foreground/40" />
+        <button
+          onClick={() => handleOpenChange(true)}
+          className={cn(
+            "flex-1 text-left text-sm",
+            data ? "text-foreground" : "text-muted-foreground"
+          )}
+        >
+          {data?.title ?? label}
+        </button>
+      </div>
+
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>{label}</DialogTitle>
+        </DialogHeader>
+        <div className="flex flex-col gap-3">
+          <Input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") { e.preventDefault(); handleSave() }
+            }}
+            placeholder="Dish name"
+            autoFocus
+          />
+          <Textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Ingredients, prep notes..."
+            className="min-h-16 text-sm"
+          />
+        </div>
+        <DialogFooter>
+          <Button onClick={handleSave} size="sm">Save</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

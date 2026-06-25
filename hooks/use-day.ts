@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useDemoContext } from "@/lib/demo-context"
 import type { Task, TaskTier } from "@/lib/types"
@@ -36,18 +36,21 @@ export function useDay(date: string) {
   }, [date, demo])
 
   const demoTasks = demo ? demo.state.tasks.filter((t) => t.date === date) : tasks
+  const tasksRef = useRef<Task[]>(demoTasks)
+  tasksRef.current = demoTasks
 
   const addTask = useCallback(
-    (tier: TaskTier, title: string) => {
+    (tier: TaskTier, title: string, timeStart?: string, timeEnd?: string) => {
       const newTask: Task = {
         id: crypto.randomUUID(),
         date,
         title,
         tier,
-        time_start: null,
-        time_end: null,
+        time_start: timeStart ?? null,
+        time_end: timeEnd ?? null,
         completed: false,
         notes: null,
+        source: null,
         position: Math.floor(Date.now() / 1000) % 2000000000,
         created_at: new Date().toISOString(),
       }
@@ -98,5 +101,70 @@ export function useDay(date: string) {
     if (error) console.error("Failed to delete task:", error)
   }, [demo])
 
-  return { tasks: demoTasks, loading, addTask, updateTask, deleteTask }
+  const upsertTimedBlock = useCallback(
+    async (source: string, title: string, tier: TaskTier, timeStart: string, timeEnd: string) => {
+      const existing = tasksRef.current.find((t) => t.source === source)
+
+      if (demo) {
+        if (existing) {
+          demo.setTasks((prev) =>
+            prev.map((t) =>
+              t.id === existing.id ? { ...t, title, tier, time_start: timeStart, time_end: timeEnd } : t
+            )
+          )
+        } else {
+          const newTask: Task = {
+            id: crypto.randomUUID(),
+            date,
+            title,
+            tier,
+            source,
+            time_start: timeStart,
+            time_end: timeEnd,
+            completed: false,
+            notes: null,
+            position: 0,
+            created_at: new Date().toISOString(),
+          }
+          demo.setTasks((prev) => [...prev, newTask])
+        }
+        return
+      }
+
+      if (existing) {
+        setTasks((prev) =>
+          prev.map((t) =>
+            t.id === existing.id ? { ...t, title, tier, time_start: timeStart, time_end: timeEnd } : t
+          )
+        )
+        const supabase = createClient()
+        const { error } = await supabase
+          .from("tasks")
+          .update({ title, tier, time_start: timeStart, time_end: timeEnd })
+          .eq("id", existing.id)
+        if (error) console.error("Failed to update timed block:", error)
+      } else {
+        const newTask: Task = {
+          id: crypto.randomUUID(),
+          date,
+          title,
+          tier,
+          source,
+          time_start: timeStart,
+          time_end: timeEnd,
+          completed: false,
+          notes: null,
+          position: 0,
+          created_at: new Date().toISOString(),
+        }
+        setTasks((prev) => [...prev, newTask])
+        const supabase = createClient()
+        const { error } = await supabase.from("tasks").insert(newTask)
+        if (error) console.error("Failed to insert timed block:", error)
+      }
+    },
+    [date, demo]
+  )
+
+  return { tasks: demoTasks, loading, addTask, updateTask, deleteTask, upsertTimedBlock }
 }

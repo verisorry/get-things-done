@@ -56,12 +56,16 @@ interface TimeGridProps {
   tasks: Task[]
   isToday: boolean
   onDropTask: (taskId: string, timeStart: string, timeEnd: string) => void
+  onDropGoal?: (goalId: string, goalTitle: string, timeStart: string, timeEnd: string) => void
+  onDropMeal?: (mealTitle: string, timeStart: string, timeEnd: string, mealType: string) => void
 }
 
 export function TimeGrid({
   tasks,
   isToday,
   onDropTask,
+  onDropGoal,
+  onDropMeal,
 }: TimeGridProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const gridRef = useRef<HTMLDivElement>(null)
@@ -102,7 +106,12 @@ export function TimeGrid({
   }, [])
 
   function handleDragOver(e: React.DragEvent) {
-    if (!e.dataTransfer.types.includes("application/task-id")) return
+    const { types } = e.dataTransfer
+    if (
+      !types.includes("application/task-id") &&
+      !types.includes("application/goal-id") &&
+      !types.includes("application/meal-type")
+    ) return
     e.preventDefault()
     e.dataTransfer.dropEffect = "move"
     setDragSlot(getSlotFromEvent(e))
@@ -116,10 +125,34 @@ export function TimeGrid({
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault()
-    const taskId = e.dataTransfer.getData("application/task-id")
     const slot = getSlotFromEvent(e)
-    if (!taskId || slot === null) return
-    onDropTask(taskId, slotToTime(slot), slotToTime(slot + DEFAULT_DURATION_SLOTS))
+    if (slot === null) { setDragSlot(null); return }
+    const timeStart = slotToTime(slot)
+    const timeEnd = slotToTime(slot + DEFAULT_DURATION_SLOTS)
+
+    const taskId = e.dataTransfer.getData("application/task-id")
+    if (taskId) {
+      onDropTask(taskId, timeStart, timeEnd)
+      setDragSlot(null)
+      return
+    }
+
+    const goalId = e.dataTransfer.getData("application/goal-id")
+    const goalTitle = e.dataTransfer.getData("application/goal-title")
+    if (goalId && goalTitle) {
+      onDropGoal?.(goalId, goalTitle, timeStart, timeEnd)
+      setDragSlot(null)
+      return
+    }
+
+    const mealTitle = e.dataTransfer.getData("application/meal-title")
+    const mealType = e.dataTransfer.getData("application/meal-type")
+    if (mealTitle && mealType) {
+      onDropMeal?.(mealTitle, timeStart, timeEnd, mealType)
+      setDragSlot(null)
+      return
+    }
+
     setDragSlot(null)
   }
 

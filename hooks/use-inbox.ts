@@ -70,6 +70,7 @@ export function useInbox() {
           time_end: null,
           completed: false,
           notes: null,
+          source: null,
           position: Math.floor(Date.now() / 1000) % 2000000000,
           created_at: new Date().toISOString(),
         }])

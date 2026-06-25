@@ -21,14 +21,15 @@ export function DayPanel({
   isToday,
   ref,
 }: DayPanelProps) {
-  const { tasks, addTask, updateTask, deleteTask } = useDay(date)
+  const { tasks, addTask, updateTask, deleteTask, upsertTimedBlock } = useDay(date)
   const { lunch, dinner, upsertMeal } = useMealPlan(date)
   const parsed = parseISO(date)
   const { goals, toggleDate } = useMonthlyGoals(getYear(parsed), getMonth(parsed) + 1)
 
+  const regularTasks = tasks.filter((t) => !t.source)
   const completedGoals = goals.filter((g) => g.completed_dates.includes(date)).length
-  const total = tasks.length + goals.length
-  const completed = tasks.filter((t) => t.completed).length + completedGoals
+  const total = regularTasks.length + goals.length
+  const completed = regularTasks.filter((t) => t.completed).length + completedGoals
   const progress = total > 0 ? completed / total : 0
 
   return (
@@ -69,6 +70,8 @@ export function DayPanel({
               tasks={tasks}
               date={date}
               goals={goals}
+              lunch={lunch}
+              dinner={dinner}
               onAddTask={addTask}
               onUpdateTask={updateTask}
               onDeleteTask={deleteTask}
@@ -79,6 +82,7 @@ export function DayPanel({
                   new CustomEvent("task-to-inbox", { detail: { title } })
                 )
               }}
+              onSaveMeal={upsertMeal}
             />
           </div>
 
@@ -94,6 +98,12 @@ export function DayPanel({
           isToday={isToday}
           onDropTask={(taskId, timeStart, timeEnd) =>
             updateTask(taskId, { time_start: timeStart, time_end: timeEnd })
+          }
+          onDropGoal={(goalId, goalTitle, timeStart, timeEnd) =>
+            upsertTimedBlock(`goal:${goalId}`, goalTitle, "important", timeStart, timeEnd)
+          }
+          onDropMeal={(mealTitle, timeStart, timeEnd, mealType) =>
+            upsertTimedBlock(`meal:${mealType}`, mealTitle, "other", timeStart, timeEnd)
           }
         />
       </div>
