@@ -1,12 +1,13 @@
 "use client"
 
-import { format, parseISO } from "date-fns"
+import { format, getMonth, getYear, parseISO } from "date-fns"
 import { Separator } from "@/components/ui/separator"
 import { TaskList } from "@/components/day/TaskList"
 import { TimeGrid } from "@/components/day/TimeGrid"
 import { MealPreview } from "@/components/day/MealPreview"
 import { useDay } from "@/hooks/use-day"
 import { useMealPlan } from "@/hooks/use-meal-plan"
+import { useMonthlyGoals } from "@/hooks/use-monthly-goals"
 import { cn } from "@/lib/utils"
 
 interface DayPanelProps {
@@ -23,9 +24,11 @@ export function DayPanel({
   const { tasks, addTask, updateTask, deleteTask } = useDay(date)
   const { lunch, dinner, upsertMeal } = useMealPlan(date)
   const parsed = parseISO(date)
+  const { goals, toggleDate } = useMonthlyGoals(getYear(parsed), getMonth(parsed) + 1)
 
-  const total = tasks.length
-  const completed = tasks.filter((t) => t.completed).length
+  const completedGoals = goals.filter((g) => g.completed_dates.includes(date)).length
+  const total = tasks.length + goals.length
+  const completed = tasks.filter((t) => t.completed).length + completedGoals
   const progress = total > 0 ? completed / total : 0
 
   return (
@@ -65,9 +68,11 @@ export function DayPanel({
             <TaskList
               tasks={tasks}
               date={date}
+              goals={goals}
               onAddTask={addTask}
               onUpdateTask={updateTask}
               onDeleteTask={deleteTask}
+              onToggleGoal={(goalId) => toggleDate(goalId, date)}
               onSendToInbox={(id, title) => {
                 deleteTask(id)
                 window.dispatchEvent(

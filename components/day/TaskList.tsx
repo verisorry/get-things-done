@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { Plus } from "lucide-react"
+import { Plus, Target } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { TaskCard } from "@/components/day/TaskCard"
 import {
@@ -11,7 +11,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
-import type { Task, TaskTier } from "@/lib/types"
+import type { Task, TaskTier, MonthlyGoal } from "@/lib/types"
 
 const TIERS: { key: TaskTier; label: string; tip: string; dot: string; glow: string }[] = [
   { key: "focus", label: "Focus", tip: "What will make today a win", dot: "bg-tier-focus", glow: "shadow-[0_0_6px_rgba(0,0,0,0.4)] dark:shadow-[0_0_6px_rgba(250,250,250,0.4)]" },
@@ -23,18 +23,22 @@ const TIERS: { key: TaskTier; label: string; tip: string; dot: string; glow: str
 interface TaskListProps {
   tasks: Task[]
   date: string
+  goals?: MonthlyGoal[]
   onAddTask: (tier: TaskTier, title: string) => void
   onUpdateTask: (id: string, updates: Partial<Task>) => void
   onDeleteTask: (id: string) => void
+  onToggleGoal?: (goalId: string) => void
   onSendToInbox?: (id: string, title: string) => void
 }
 
 export function TaskList({
   tasks,
   date,
+  goals = [],
   onAddTask,
   onUpdateTask,
   onDeleteTask,
+  onToggleGoal,
   onSendToInbox,
 }: TaskListProps) {
   const [addingTier, setAddingTier] = useState<TaskTier | null>(null)
@@ -149,6 +153,15 @@ export function TaskList({
             </div>
 
             <div className="flex flex-col">
+              {key === "important" && goals.map((goal) => (
+                <GoalRow
+                  key={goal.id}
+                  goal={goal}
+                  date={date}
+                  onToggle={() => onToggleGoal?.(goal.id)}
+                />
+              ))}
+
               {active.map((task) => (
                 <TaskCard
                   key={task.id}
@@ -188,5 +201,46 @@ export function TaskList({
         )
       })}
     </div>
+  )
+}
+
+function GoalRow({
+  goal,
+  date,
+  onToggle,
+}: {
+  goal: MonthlyGoal
+  date: string
+  onToggle: () => void
+}) {
+  const done = goal.completed_dates.includes(date)
+
+  return (
+    <button
+      onClick={onToggle}
+      className={cn(
+        "group flex w-full items-center gap-1.5 px-1.5 py-2.5 text-left transition-opacity",
+        done && "opacity-50"
+      )}
+    >
+      <div className="size-3 shrink-0 pl-[3px]" />
+      <div
+        className={cn(
+          "flex size-4 shrink-0 items-center justify-center rounded-full border border-tier-important transition-colors",
+          done && "border-completed bg-completed"
+        )}
+      >
+        {done && <span className="text-[8px] text-white">✓</span>}
+      </div>
+      <span
+        className={cn(
+          "flex-1 break-words text-sm",
+          done && "line-through text-muted-foreground"
+        )}
+      >
+        {goal.title}
+      </span>
+      <Target className="size-3 shrink-0 text-tier-important opacity-40" />
+    </button>
   )
 }
