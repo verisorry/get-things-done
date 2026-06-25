@@ -36,7 +36,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-[#F2F2F7] dark:bg-[#1c1c1e]">
       <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-[0_1px_3px_rgba(0,0,0,0.08),0_4px_12px_rgba(0,0,0,0.06)] dark:bg-[#2c2c2e]">
         <div className="mb-4 flex items-center gap-3">
-          <Image src="/Logo.png" alt="GTD" width={40} height={40} className="rounded-[10px]" />
+          <Image src="/logo.png" alt="GTD" width={40} height={40} className="rounded-[10px]" />
           <div>
             <h1 className="text-xl font-semibold tracking-tight">Get Things Done</h1>
             <p className="text-sm text-muted-foreground">Sign in to continue</p>

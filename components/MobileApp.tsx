@@ -133,7 +133,7 @@ function TasksTab() {
     <div className="px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-36">
       <div className="mb-4">
         <div className="mb-1 flex items-center gap-2">
-          <Image src="/Logo.png" alt="GTD" width={28} height={28} className="rounded-[7px]" />
+          <Image src="/logo.png" alt="GTD" width={28} height={28} className="rounded-[7px]" />
           <h1 className="text-2xl font-bold">{format(today, "EEEE")}</h1>
         </div>
         <p className="text-sm text-muted-foreground">{format(today, "MMMM d")}</p>
@@ -313,7 +313,7 @@ function InboxTab() {
     <div className="flex h-full flex-col">
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-5">
         <div className="mb-4 flex items-center gap-2">
-          <Image src="/Logo.png" alt="GTD" width={28} height={28} className="rounded-[7px]" />
+          <Image src="/logo.png" alt="GTD" width={28} height={28} className="rounded-[7px]" />
           <h1 className="text-2xl font-bold">Inbox</h1>
           {items.length > 0 && (
             <Badge variant="secondary">{items.length}</Badge>
