@@ -53,6 +53,16 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     setThemeValue(getInitialTheme())
+
+    const mq = window.matchMedia("(prefers-color-scheme: light)")
+    function onSystemChange(e: MediaQueryListEvent) {
+      // Only follow the system if the user hasn't manually set a preference
+      if (!localStorage.getItem("theme")) {
+        setThemeValue(e.matches ? "light" : "dark")
+      }
+    }
+    mq.addEventListener("change", onSystemChange)
+    return () => mq.removeEventListener("change", onSystemChange)
   }, [])
 
   useEffect(() => {

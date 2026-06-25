@@ -337,7 +337,7 @@ function InboxTab() {
         )}
       </div>
 
-      <div className="shrink-0 border-t border-white/80 bg-white/60 px-4 py-3 pb-36 backdrop-blur-[20px] dark:border-white/[0.06] dark:bg-white/[0.03]">
+      <div className="shrink-0 border-t border-white/80 bg-white/60 px-4 pt-3 pb-[max(4.5rem,calc(env(safe-area-inset-bottom)+6rem))] backdrop-blur-[20px] dark:border-white/[0.06] dark:bg-white/[0.03]">
         <div className="flex items-center gap-3 rounded-2xl bg-secondary/60 px-4 py-3 dark:bg-white/[0.06]">
           <div className="size-4 shrink-0 rounded-full border border-border" />
           <input
