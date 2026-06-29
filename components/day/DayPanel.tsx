@@ -26,6 +26,7 @@ export function DayPanel({
   const parsed = parseISO(date)
   const { goals, toggleDate } = useMonthlyGoals(getYear(parsed), getMonth(parsed) + 1)
 
+  const isPastDay = date < format(new Date(), "yyyy-MM-dd")
   const regularTasks = tasks.filter((t) => !t.source)
   const completedGoals = goals.filter((g) => g.completed_dates.includes(date)).length
   const total = regularTasks.length + goals.length
@@ -77,11 +78,14 @@ export function DayPanel({
               onDeleteTask={deleteTask}
               onToggleGoal={(goalId) => toggleDate(goalId, date)}
               onSendToInbox={(id, title) => {
-                deleteTask(id)
+                if (!isPastDay) {
+                  deleteTask(id)
+                }
                 window.dispatchEvent(
                   new CustomEvent("task-to-inbox", { detail: { title } })
                 )
               }}
+              isPastDay={isPastDay}
               onSaveMeal={upsertMeal}
             />
           </div>

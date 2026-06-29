@@ -41,6 +41,7 @@ interface TaskListProps {
   onToggleGoal?: (goalId: string) => void
   onSendToInbox?: (id: string, title: string) => void
   onSaveMeal?: (meal: MealType, title: string, notes: string | null) => void
+  isPastDay?: boolean
 }
 
 export function TaskList({
@@ -55,6 +56,7 @@ export function TaskList({
   onToggleGoal,
   onSendToInbox,
   onSaveMeal,
+  isPastDay,
 }: TaskListProps) {
   const [addingTier, setAddingTier] = useState<TaskTier | null>(null)
   const [addTitle, setAddTitle] = useState("")
@@ -191,6 +193,7 @@ export function TaskList({
                   onUpdate={onUpdateTask}
                   onDelete={onDeleteTask}
                   onSendToInbox={onSendToInbox}
+                  isPastDay={isPastDay}
                 />
               ))}
 
@@ -216,6 +219,7 @@ export function TaskList({
                   onUpdate={onUpdateTask}
                   onDelete={onDeleteTask}
                   onSendToInbox={onSendToInbox}
+                  isPastDay={isPastDay}
                 />
               ))}
             </div>

@@ -10,6 +10,7 @@ import {
 import { addDays, format, isToday, subDays } from "date-fns"
 import { TopBar } from "@/components/TopBar"
 import { DayPanel } from "@/components/day/DayPanel"
+import { useTaskNotifications } from "@/hooks/use-task-notifications"
 
 const BUFFER = 7
 
@@ -21,6 +22,8 @@ function makeDates(center: Date, back: number, forward: number) {
 }
 
 export default function Home() {
+  useTaskNotifications()
+
   const [dates, setDates] = useState(() =>
     makeDates(new Date(), BUFFER, BUFFER)
   )

@@ -26,9 +26,10 @@ interface TaskCardProps {
   onUpdate: (id: string, updates: Partial<Task>) => void
   onDelete: (id: string) => void
   onSendToInbox?: (id: string, title: string) => void
+  isPastDay?: boolean
 }
 
-export function TaskCard({ task, onUpdate, onDelete, onSendToInbox }: TaskCardProps) {
+export function TaskCard({ task, onUpdate, onDelete, onSendToInbox, isPastDay }: TaskCardProps) {
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState(task.title)
   const [notes, setNotes] = useState(task.notes ?? "")
@@ -125,7 +126,7 @@ export function TaskCard({ task, onUpdate, onDelete, onSendToInbox }: TaskCardPr
                 className="w-full justify-start text-muted-foreground"
               >
                 <Inbox className="mr-1.5 size-3.5" />
-                Send to Inbox
+                {isPastDay ? "Copy to Inbox" : "Send to Inbox"}
               </Button>
             )}
             <Button
