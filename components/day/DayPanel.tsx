@@ -103,6 +103,9 @@ export function DayPanel({
           onDropTask={(taskId, timeStart, timeEnd) =>
             updateTask(taskId, { time_start: timeStart, time_end: timeEnd })
           }
+          onUnscheduleTask={(taskId) =>
+            updateTask(taskId, { time_start: null, time_end: null })
+          }
           onDropGoal={(goalId, goalTitle, timeStart, timeEnd) =>
             upsertTimedBlock(`goal:${goalId}`, goalTitle, "important", timeStart, timeEnd)
           }

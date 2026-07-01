@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import { X } from "lucide-react"
 
 function setCursor(cursor: string) {
   document.body.style.cursor = cursor
@@ -58,6 +59,7 @@ interface TimeGridProps {
   onDropTask: (taskId: string, timeStart: string, timeEnd: string) => void
   onDropGoal?: (goalId: string, goalTitle: string, timeStart: string, timeEnd: string) => void
   onDropMeal?: (mealTitle: string, timeStart: string, timeEnd: string, mealType: string) => void
+  onUnscheduleTask?: (taskId: string) => void
 }
 
 export function TimeGrid({
@@ -66,6 +68,7 @@ export function TimeGrid({
   onDropTask,
   onDropGoal,
   onDropMeal,
+  onUnscheduleTask,
 }: TimeGridProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const gridRef = useRef<HTMLDivElement>(null)
@@ -326,7 +329,7 @@ export function TimeGrid({
                 handleMoveStart(task.id, startSlot, duration, e)
               }
               className={cn(
-                "group/block absolute right-1 left-14 z-20 cursor-grab overflow-hidden rounded-lg px-2 py-1 active:cursor-grabbing",
+                "group/block absolute right-1 left-14 z-20 cursor-grab overflow-hidden rounded-lg border border-black/10 px-2 py-1 active:cursor-grabbing dark:border-white/10",
                 TIER_BLOCK[task.tier],
                 task.completed && "opacity-40",
                 (isMovingThis || isResizingThis) && "z-30 ring-2 ring-ring/30"
@@ -336,14 +339,28 @@ export function TimeGrid({
                 height: Math.max(displayHeight, SLOT_HEIGHT),
               }}
             >
+              {onUnscheduleTask && (
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onUnscheduleTask(task.id)
+                  }}
+                  className="absolute top-1 right-1 z-10 flex size-4 items-center justify-center rounded-full bg-black/10 opacity-0 transition-opacity hover:bg-black/20 group-hover/block:opacity-100 dark:bg-white/10 dark:hover:bg-white/20"
+                >
+                  <X className="size-2.5" />
+                </button>
+              )}
+
               {duration <= 1 ? (
-                <div className="flex items-baseline gap-1.5 overflow-hidden">
+                <div className="flex items-baseline gap-1.5 overflow-hidden pr-4">
                   <span className="truncate text-[11px] font-semibold leading-none">{task.title}</span>
                   <span className="shrink-0 text-[9px] leading-none text-muted-foreground">{formatTime(task.time_start!)}</span>
                 </div>
               ) : (
                 <>
-                  <span className="block text-[11px] font-semibold leading-tight">{task.title}</span>
+                  <span className="block text-[11px] font-semibold leading-tight pr-4">{task.title}</span>
                   <span className="block text-[9px] text-muted-foreground">{formatTime(task.time_start!)}</span>
                 </>
               )}
