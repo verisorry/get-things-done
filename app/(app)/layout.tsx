@@ -3,10 +3,13 @@
 import { GoalsSidebar } from "@/components/GoalsSidebar"
 import { InboxPanel } from "@/components/InboxPanel"
 import { MobileApp } from "@/components/MobileApp"
+import { MonthRecapDialog } from "@/components/MonthRecapDialog"
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
+      <MonthRecapDialog />
+
       {/* Mobile */}
       <div className="flex h-full w-full md:hidden">
         <MobileApp />
