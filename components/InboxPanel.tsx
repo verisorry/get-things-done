@@ -21,7 +21,7 @@ const DEFAULT_WIDTH = 320
 function parseInput(value: string): { title: string; tag: string | null } {
   const match = value.match(/@(\S+)/)
   if (!match) return { title: value.trim(), tag: null }
-  const tag = match[1]
+  const tag = match[1].toLowerCase()
   const title = value.replace(match[0], "").trim()
   return { title: title || tag, tag }
 }
