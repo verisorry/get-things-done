@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useSyncExternalStore } from "react"
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { format, getDaysInMonth } from "date-fns"
 import {
   ChevronLeft,
@@ -30,9 +30,11 @@ import type { MonthlyGoal } from "@/lib/types"
 
 type Panel = "goals" | "meals"
 const RAIL_W = 48
-const PANEL_W = 300
-const TOTAL_W = RAIL_W + PANEL_W
+const PANEL_W_DEFAULT = 300
+const PANEL_W_MIN = 200
+const PANEL_W_MAX = 520
 const STORAGE_KEY = "sidebar-panel"
+const STORAGE_KEY_WIDTH = "sidebar-panel-width"
 
 let panelValue: Panel | null = null
 const panelListeners = new Set<() => void>()
@@ -51,6 +53,11 @@ export function GoalsSidebar() {
   const { theme, toggle: toggleTheme } = useTheme()
   const activePanel = useSyncExternalStore(subscribePanelStore, getPanelSnapshot, getPanelServerSnapshot)
   const [ready, setReady] = useState(false)
+  const [panelW, setPanelW] = useState(PANEL_W_DEFAULT)
+  const [isResizing, setIsResizing] = useState(false)
+  const resizing = useRef(false)
+  const startX = useRef(0)
+  const startW = useRef(PANEL_W_DEFAULT)
 
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
@@ -68,8 +75,41 @@ export function GoalsSidebar() {
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY)
     if (stored === "goals" || stored === "meals") setPanelValue(stored)
+    const storedW = localStorage.getItem(STORAGE_KEY_WIDTH)
+    if (storedW) {
+      const n = parseInt(storedW)
+      if (n >= PANEL_W_MIN && n <= PANEL_W_MAX) setPanelW(n)
+    }
     requestAnimationFrame(() => setReady(true))
   }, [])
+
+  const onResizeMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    resizing.current = true
+    setIsResizing(true)
+    startX.current = e.clientX
+    startW.current = panelW
+
+    function onMouseMove(ev: MouseEvent) {
+      if (!resizing.current) return
+      const delta = ev.clientX - startX.current
+      const next = Math.min(PANEL_W_MAX, Math.max(PANEL_W_MIN, startW.current + delta))
+      setPanelW(next)
+    }
+
+    function onMouseUp(ev: MouseEvent) {
+      resizing.current = false
+      setIsResizing(false)
+      const delta = ev.clientX - startX.current
+      const next = Math.min(PANEL_W_MAX, Math.max(PANEL_W_MIN, startW.current + delta))
+      localStorage.setItem(STORAGE_KEY_WIDTH, String(next))
+      window.removeEventListener("mousemove", onMouseMove)
+      window.removeEventListener("mouseup", onMouseUp)
+    }
+
+    window.addEventListener("mousemove", onMouseMove)
+    window.addEventListener("mouseup", onMouseUp)
+  }, [panelW])
 
   function togglePanel(panel: Panel) {
     const next = activePanel === panel ? null : panel
@@ -109,15 +149,17 @@ export function GoalsSidebar() {
     setAddOpen(false)
   }
 
+  const totalW = RAIL_W + panelW
+
   return (
     <aside
-      style={{ width: activePanel ? TOTAL_W : RAIL_W }}
+      style={{ width: activePanel ? totalW : RAIL_W }}
       className={cn(
-        "flex h-full shrink-0 overflow-hidden border-r border-white/80 bg-white/60 backdrop-blur-[20px] dark:border-r-white/[0.06] dark:bg-white/[0.03]",
-        ready && "transition-[width] duration-200 ease-in-out"
+        "relative flex h-full shrink-0 overflow-hidden border-r border-white/80 bg-white/60 backdrop-blur-[20px] dark:border-r-white/[0.06] dark:bg-white/[0.03]",
+        ready && !isResizing && "transition-[width] duration-200 ease-in-out"
       )}
     >
-      <div className="flex h-full" style={{ width: TOTAL_W }}>
+      <div className="flex h-full" style={{ width: totalW }}>
         {/* Icon rail */}
         <div className="flex w-12 shrink-0 flex-col items-center border-r border-border pt-3 pb-3">
           <img
@@ -255,6 +297,14 @@ export function GoalsSidebar() {
           )}
         </div>
       </div>
+
+      {activePanel && (
+        <div
+          onMouseDown={onResizeMouseDown}
+          className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-[#007aff]/30 active:bg-[#007aff]/50"
+          style={{ zIndex: 10 }}
+        />
+      )}
 
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent className="sm:max-w-sm">
