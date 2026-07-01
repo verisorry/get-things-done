@@ -53,7 +53,12 @@ export function GoalsSidebar() {
   const { theme, toggle: toggleTheme } = useTheme()
   const activePanel = useSyncExternalStore(subscribePanelStore, getPanelSnapshot, getPanelServerSnapshot)
   const [ready, setReady] = useState(false)
-  const [panelW, setPanelW] = useState(PANEL_W_DEFAULT)
+  const [panelW, setPanelW] = useState(() => {
+    if (typeof window === "undefined") return PANEL_W_DEFAULT
+    const storedW = window.localStorage.getItem(STORAGE_KEY_WIDTH)
+    const n = storedW ? parseInt(storedW) : NaN
+    return n >= PANEL_W_MIN && n <= PANEL_W_MAX ? n : PANEL_W_DEFAULT
+  })
   const [isResizing, setIsResizing] = useState(false)
   const resizing = useRef(false)
   const startX = useRef(0)
@@ -75,11 +80,6 @@ export function GoalsSidebar() {
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY)
     if (stored === "goals" || stored === "meals") setPanelValue(stored)
-    const storedW = localStorage.getItem(STORAGE_KEY_WIDTH)
-    if (storedW) {
-      const n = parseInt(storedW)
-      if (n >= PANEL_W_MIN && n <= PANEL_W_MAX) setPanelW(n)
-    }
     requestAnimationFrame(() => setReady(true))
   }, [])
 
