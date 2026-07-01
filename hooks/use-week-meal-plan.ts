@@ -85,9 +85,89 @@ export function useWeekMealPlan(weekStartDate: string) {
             .from("meal_plan")
             .insert({ date, meal, title, notes })
       if (error) console.error("Failed to save meal:", error)
+      else window.dispatchEvent(new CustomEvent("meal-changed", { detail: { date } }))
     },
     [demo]
   )
 
-  return { getMeal, upsertMeal }
+  const deleteMeal = useCallback(
+    async (date: string, meal: MealType) => {
+      if (demo) {
+        demo.setMeals((prev) =>
+          prev.filter((m) => !(m.date === date && m.meal === meal))
+        )
+        return
+      }
+
+      let idToDelete: string | undefined
+      setMeals((prev) => {
+        idToDelete = prev.find((m) => m.date === date && m.meal === meal)?.id
+        return prev.filter((m) => !(m.date === date && m.meal === meal))
+      })
+
+      if (idToDelete) {
+        const supabase = createClient()
+        const { error } = await supabase
+          .from("meal_plan")
+          .delete()
+          .eq("id", idToDelete)
+        if (error) console.error("Failed to delete meal:", error)
+        else window.dispatchEvent(new CustomEvent("meal-changed", { detail: { date } }))
+      }
+    },
+    [demo]
+  )
+
+  const swapMeals = useCallback(
+    async (
+      fromDate: string,
+      fromMeal: MealType,
+      toDate: string,
+      toMeal: MealType
+    ) => {
+      const activeMeals = demo ? demo.state.meals : meals
+      const from = activeMeals.find((m) => m.date === fromDate && m.meal === fromMeal)
+      const to = activeMeals.find((m) => m.date === toDate && m.meal === toMeal)
+      if (!from) return
+
+      if (demo) {
+        demo.setMeals((prev) => {
+          const filtered = prev.filter(
+            (m) => !(m.date === fromDate && m.meal === fromMeal) && !(m.date === toDate && m.meal === toMeal)
+          )
+          const records: MealPlan[] = [
+            { ...from, date: toDate, meal: toMeal },
+          ]
+          if (to) records.push({ ...to, date: fromDate, meal: fromMeal })
+          return [...filtered, ...records]
+        })
+        return
+      }
+
+      setMeals((prev) => {
+        const filtered = prev.filter(
+          (m) => !(m.date === fromDate && m.meal === fromMeal) && !(m.date === toDate && m.meal === toMeal)
+        )
+        const records: MealPlan[] = [{ ...from, date: toDate, meal: toMeal }]
+        if (to) records.push({ ...to, date: fromDate, meal: fromMeal })
+        return [...filtered, ...records]
+      })
+
+      const supabase = createClient()
+      // Move source to target slot
+      const moveTo = await supabase.from("meal_plan").update({ date: toDate, meal: toMeal }).eq("id", from.id)
+      if (moveTo.error) console.error("Failed to swap meal:", moveTo.error)
+      // If there was a meal at the target, move it back to the source slot
+      if (to) {
+        const moveFrom = await supabase.from("meal_plan").update({ date: fromDate, meal: fromMeal }).eq("id", to.id)
+        if (moveFrom.error) console.error("Failed to swap meal:", moveFrom.error)
+      }
+      if (!moveTo.error) {
+        window.dispatchEvent(new CustomEvent("meal-changed", { detail: { dates: [fromDate, toDate] } }))
+      }
+    },
+    [demo, meals]
+  )
+
+  return { getMeal, upsertMeal, deleteMeal, swapMeals }
 }

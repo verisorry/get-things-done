@@ -9,8 +9,7 @@ export function useMealPlan(date: string) {
   const demo = useDemoContext()
   const [meals, setMeals] = useState<MealPlan[]>([])
 
-  useEffect(() => {
-    if (demo) return
+  function fetchMeals() {
     const supabase = createClient()
     supabase
       .from("meal_plan")
@@ -20,6 +19,22 @@ export function useMealPlan(date: string) {
         if (error) console.error("Failed to fetch meals:", error)
         if (data) setMeals(data as MealPlan[])
       })
+  }
+
+  useEffect(() => {
+    if (demo) return
+    fetchMeals()
+  }, [date, demo])
+
+  useEffect(() => {
+    if (demo) return
+    function handleMealChanged(e: Event) {
+      const detail = (e as CustomEvent).detail as { date?: string; dates?: string[] }
+      const affected = detail.dates ?? (detail.date ? [detail.date] : [])
+      if (affected.includes(date)) fetchMeals()
+    }
+    window.addEventListener("meal-changed", handleMealChanged)
+    return () => window.removeEventListener("meal-changed", handleMealChanged)
   }, [date, demo])
 
   const dayMeals = demo ? demo.state.meals.filter((m) => m.date === date) : meals
