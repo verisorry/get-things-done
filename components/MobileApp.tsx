@@ -4,12 +4,14 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { format, addDays, getMonth, getYear } from "date-fns"
 import Image from "next/image"
-import { CalendarDays, CheckSquare, Inbox, LogOut, Target, Trash2 } from "lucide-react"
+import { CalendarDays, CheckSquare, Inbox, LogOut, Target, Trash2, UtensilsCrossed } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Popover,
   PopoverContent,
@@ -17,11 +19,12 @@ import {
 } from "@/components/ui/popover"
 import { useDay } from "@/hooks/use-day"
 import { useInbox } from "@/hooks/use-inbox"
+import { useMealPlan } from "@/hooks/use-meal-plan"
 import { useMonthlyGoals } from "@/hooks/use-monthly-goals"
 import { useDemoContext } from "@/lib/demo-context"
 import { createClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
-import type { Task, TaskTier, InboxItem, MonthlyGoal } from "@/lib/types"
+import type { Task, TaskTier, InboxItem, MonthlyGoal, MealType } from "@/lib/types"
 
 const today = new Date()
 const todayStr = format(today, "yyyy-MM-dd")
@@ -44,7 +47,7 @@ const TIER_CHECKBOX: Record<TaskTier, string> = {
 function parseInput(value: string): { title: string; tag: string | null } {
   const match = value.match(/@(\S+)/)
   if (!match) return { title: value.trim(), tag: null }
-  const tag = match[1]
+  const tag = match[1].toLowerCase()
   const title = value.replace(match[0], "").trim()
   return { title: title || tag, tag }
 }
@@ -95,6 +98,7 @@ export function MobileApp() {
 function TasksTab() {
   const { tasks, addTask, updateTask, deleteTask } = useDay(todayStr)
   const { goals, toggleDate } = useMonthlyGoals(getYear(today), getMonth(today) + 1)
+  const { lunch, dinner, upsertMeal } = useMealPlan(todayStr)
   const [addingTier, setAddingTier] = useState<TaskTier | null>(null)
   const [addTitle, setAddTitle] = useState("")
   const inputRef = useRef<HTMLInputElement>(null)
@@ -145,6 +149,12 @@ function TasksTab() {
       </div>
 
       <div className="flex flex-col gap-4">
+        <MobileMealsSection
+          lunch={lunch}
+          dinner={dinner}
+          onSave={(meal, title, notes) => upsertMeal(meal, title, notes)}
+        />
+
         {TIERS.map(({ key, label, dot }) => {
           const tierTasks = tasks.filter((t) => t.tier === key)
           const active = tierTasks.filter((t) => !t.completed)
@@ -204,6 +214,88 @@ function TasksTab() {
         })}
       </div>
     </div>
+  )
+}
+
+function MobileMealsSection({
+  lunch,
+  dinner,
+  onSave,
+}: {
+  lunch: import("@/lib/types").MealPlan | null
+  dinner: import("@/lib/types").MealPlan | null
+  onSave: (meal: MealType, title: string, notes: string | null) => void
+}) {
+  return (
+    <section className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-white/[0.04] dark:border dark:border-white/[0.06] dark:shadow-none">
+      <div className="flex items-center gap-2 px-4 pt-3 pb-1">
+        <UtensilsCrossed className="size-3.5 text-muted-foreground" />
+        <span className="text-[11px] font-semibold tracking-[0.06em] text-muted-foreground uppercase">Meals</span>
+      </div>
+      <div className="flex flex-col pb-2">
+        <MobileMealRow label="Lunch" meal="lunch" data={lunch} onSave={onSave} />
+        <MobileMealRow label="Dinner" meal="dinner" data={dinner} onSave={onSave} />
+      </div>
+    </section>
+  )
+}
+
+function MobileMealRow({
+  label,
+  meal,
+  data,
+  onSave,
+}: {
+  label: string
+  meal: MealType
+  data: import("@/lib/types").MealPlan | null
+  onSave: (meal: MealType, title: string, notes: string | null) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [title, setTitle] = useState("")
+  const [notes, setNotes] = useState("")
+
+  function handleOpenChange(isOpen: boolean) {
+    if (isOpen) {
+      setTitle(data?.title ?? "")
+      setNotes(data?.notes ?? "")
+    }
+    setOpen(isOpen)
+  }
+
+  function handleSave() {
+    const trimmed = title.trim()
+    if (trimmed) onSave(meal, trimmed, notes.trim() || null)
+    setOpen(false)
+  }
+
+  return (
+    <Popover open={open} onOpenChange={handleOpenChange}>
+      <PopoverTrigger asChild>
+        <button className="flex w-full items-center gap-3 px-4 py-2.5 text-left">
+          <span className="w-12 shrink-0 text-[11px] font-medium text-muted-foreground">{label}</span>
+          <span className={cn("flex-1 truncate text-sm", data ? "text-foreground" : "text-muted-foreground/40")}>
+            {data?.title ?? "—"}
+          </span>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent side="top" align="start" className="w-64 gap-2">
+        <Input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleSave() } }}
+          placeholder="Dish name"
+          autoFocus
+        />
+        <Textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Ingredients, notes..."
+          className="min-h-10 text-xs"
+        />
+        <Button onClick={handleSave} size="sm" className="w-full">Save</Button>
+      </PopoverContent>
+    </Popover>
   )
 }
 
