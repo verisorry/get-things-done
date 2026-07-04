@@ -48,7 +48,7 @@ export const DEMO_MEALS: MealPlan[] = [
 ]
 
 export const DEMO_INBOX: InboxItem[] = [
-  { id: "d-i1", title: "Look into Tailwind v4 migration", tag: "dev", created_at: todayStr, delegated_date: null, delegated_at: null },
-  { id: "d-i2", title: "Book flights for August trip", tag: "personal", created_at: todayStr, delegated_date: null, delegated_at: null },
-  { id: "d-i3", title: "Send invoice to client", tag: "work", created_at: todayStr, delegated_date: null, delegated_at: null },
+  { id: "d-i1", title: "Look into Tailwind v4 migration", tag: "dev", position: 1000, created_at: todayStr, delegated_date: null, delegated_at: null },
+  { id: "d-i2", title: "Book flights for August trip", tag: "personal", position: 2000, created_at: todayStr, delegated_date: null, delegated_at: null },
+  { id: "d-i3", title: "Send invoice to client", tag: "work", position: 3000, created_at: todayStr, delegated_date: null, delegated_at: null },
 ]

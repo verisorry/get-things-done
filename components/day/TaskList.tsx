@@ -38,6 +38,7 @@ interface TaskListProps {
   onAddTask: (tier: TaskTier, title: string) => void
   onUpdateTask: (id: string, updates: Partial<Task>) => void
   onDeleteTask: (id: string) => void
+  onReorderTask?: (taskId: string, tier: TaskTier, beforeTaskId: string | null) => void
   onToggleGoal?: (goalId: string) => void
   onSendToInbox?: (id: string, title: string) => void
   onSaveMeal?: (meal: MealType, title: string, notes: string | null) => void
@@ -53,6 +54,7 @@ export function TaskList({
   onAddTask,
   onUpdateTask,
   onDeleteTask,
+  onReorderTask,
   onToggleGoal,
   onSendToInbox,
   onSaveMeal,
@@ -61,6 +63,7 @@ export function TaskList({
   const [addingTier, setAddingTier] = useState<TaskTier | null>(null)
   const [addTitle, setAddTitle] = useState("")
   const [dropTier, setDropTier] = useState<TaskTier | null>(null)
+  const [dragOverTask, setDragOverTask] = useState<{ id: string; position: "before" | "after" } | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -91,7 +94,10 @@ export function TaskList({
   }
 
   function handleDragOver(e: React.DragEvent, tier: TaskTier) {
-    if (!e.dataTransfer.types.includes("application/inbox-id")) return
+    if (
+      !e.dataTransfer.types.includes("application/inbox-id") &&
+      !e.dataTransfer.types.includes("application/task-id")
+    ) return
     e.preventDefault()
     e.stopPropagation()
     e.dataTransfer.dropEffect = "move"
@@ -108,24 +114,67 @@ export function TaskList({
   function handleDrop(e: React.DragEvent, tier: TaskTier) {
     const inboxId = e.dataTransfer.getData("application/inbox-id")
     const title = e.dataTransfer.getData("application/inbox-title")
-    if (!inboxId || !title) return
+    if (inboxId && title) {
+      e.preventDefault()
+      e.stopPropagation()
+      setDropTier(null)
+
+      onAddTask(tier, title)
+
+      window.dispatchEvent(
+        new CustomEvent("inbox-delegated", {
+          detail: { id: inboxId, date },
+        })
+      )
+      return
+    }
+
+    const taskId = e.dataTransfer.getData("application/task-id")
+    if (taskId) {
+      e.preventDefault()
+      e.stopPropagation()
+      setDropTier(null)
+      onReorderTask?.(taskId, tier, null)
+    }
+  }
+
+  function handleCardDragOver(e: React.DragEvent, task: Task) {
+    if (!e.dataTransfer.types.includes("application/task-id")) return
     e.preventDefault()
     e.stopPropagation()
-    setDropTier(null)
+    e.dataTransfer.dropEffect = "move"
+    const rect = e.currentTarget.getBoundingClientRect()
+    const position = e.clientY - rect.top < rect.height / 2 ? "before" : "after"
+    setDragOverTask({ id: task.id, position })
+  }
 
-    onAddTask(tier, title)
+  function handleCardDragLeave(e: React.DragEvent) {
+    const target = e.currentTarget as HTMLElement
+    if (!target.contains(e.relatedTarget as Node)) {
+      setDragOverTask(null)
+    }
+  }
 
-    window.dispatchEvent(
-      new CustomEvent("inbox-delegated", {
-        detail: { id: inboxId, date },
-      })
-    )
+  function handleCardDrop(e: React.DragEvent, task: Task, tier: TaskTier, siblings: Task[]) {
+    const draggedId = e.dataTransfer.getData("application/task-id")
+    if (!draggedId) return
+    e.preventDefault()
+    e.stopPropagation()
+    if (draggedId === task.id) { setDragOverTask(null); return }
+
+    const position = dragOverTask?.id === task.id ? dragOverTask.position : "before"
+    const idx = siblings.findIndex((t) => t.id === task.id)
+    const beforeId = position === "before" ? task.id : (siblings[idx + 1]?.id ?? null)
+    onReorderTask?.(draggedId, tier, beforeId)
+    setDragOverTask(null)
   }
 
   return (
     <div className="flex flex-col gap-3 p-4">
       {TIERS.map(({ key, label, tip, dot, glow }) => {
-        const tierTasks = tasks.filter((t) => t.tier === key && !t.source)
+        const tierTasks = tasks
+          .filter((t) => t.tier === key && !t.source)
+          .sort((a, b) => a.position - b.position)
         const active = tierTasks.filter((t) => !t.completed)
         const completed = tierTasks.filter((t) => t.completed)
 
@@ -194,6 +243,10 @@ export function TaskList({
                   onDelete={onDeleteTask}
                   onSendToInbox={onSendToInbox}
                   isPastDay={isPastDay}
+                  dropIndicator={dragOverTask?.id === task.id ? dragOverTask.position : null}
+                  onCardDragOver={(e) => handleCardDragOver(e, task)}
+                  onCardDragLeave={handleCardDragLeave}
+                  onCardDrop={(e) => handleCardDrop(e, task, key, active)}
                 />
               ))}
 

@@ -30,6 +30,7 @@ export interface InboxItem {
   id: string
   title: string
   tag: string | null
+  position: number
   created_at: string
   delegated_date: string | null
   delegated_at: string | null

@@ -21,7 +21,7 @@ export function DayPanel({
   isToday,
   ref,
 }: DayPanelProps) {
-  const { tasks, addTask, updateTask, deleteTask, upsertTimedBlock } = useDay(date)
+  const { tasks, addTask, updateTask, deleteTask, upsertTimedBlock, reorderTask } = useDay(date)
   const { lunch, dinner, upsertMeal } = useMealPlan(date)
   const parsed = parseISO(date)
   const { goals, toggleDate } = useMonthlyGoals(getYear(parsed), getMonth(parsed) + 1)
@@ -76,6 +76,7 @@ export function DayPanel({
               onAddTask={addTask}
               onUpdateTask={updateTask}
               onDeleteTask={deleteTask}
+              onReorderTask={reorderTask}
               onToggleGoal={(goalId) => toggleDate(goalId, date)}
               onSendToInbox={(id, title) => {
                 if (!isPastDay) {

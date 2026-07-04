@@ -27,9 +27,23 @@ interface TaskCardProps {
   onDelete: (id: string) => void
   onSendToInbox?: (id: string, title: string) => void
   isPastDay?: boolean
+  dropIndicator?: "before" | "after" | null
+  onCardDragOver?: (e: React.DragEvent) => void
+  onCardDragLeave?: (e: React.DragEvent) => void
+  onCardDrop?: (e: React.DragEvent) => void
 }
 
-export function TaskCard({ task, onUpdate, onDelete, onSendToInbox, isPastDay }: TaskCardProps) {
+export function TaskCard({
+  task,
+  onUpdate,
+  onDelete,
+  onSendToInbox,
+  isPastDay,
+  dropIndicator,
+  onCardDragOver,
+  onCardDragLeave,
+  onCardDrop,
+}: TaskCardProps) {
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState(task.title)
   const [notes, setNotes] = useState(task.notes ?? "")
@@ -64,9 +78,14 @@ export function TaskCard({ task, onUpdate, onDelete, onSendToInbox, isPastDay }:
     <div
       draggable
       onDragStart={handleDragStart}
+      onDragOver={onCardDragOver}
+      onDragLeave={onCardDragLeave}
+      onDrop={onCardDrop}
       className={cn(
-        "group flex cursor-grab items-start gap-1.5 px-1.5 py-2.5 active:cursor-grabbing",
-        task.completed && "opacity-50"
+        "group flex cursor-grab items-start gap-1.5 border-t-2 border-b-2 border-transparent px-1.5 py-2.5 active:cursor-grabbing",
+        task.completed && "opacity-50",
+        dropIndicator === "before" && "border-t-ring",
+        dropIndicator === "after" && "border-b-ring"
       )}
     >
       <GripVertical className="mt-px size-3 shrink-0 text-muted-foreground/40 opacity-0 transition-opacity group-hover:opacity-100" />

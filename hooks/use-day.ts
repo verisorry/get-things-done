@@ -89,6 +89,59 @@ export function useDay(date: string) {
     [demo]
   )
 
+  const reorderTask = useCallback(
+    (taskId: string, tier: TaskTier, beforeTaskId: string | null) => {
+      const current = tasksRef.current
+      const moved = current.find((t) => t.id === taskId)
+      if (!moved) return
+
+      const tierTasks = current
+        .filter((t) => t.id !== taskId && t.tier === tier && !t.source && !t.completed)
+        .sort((a, b) => a.position - b.position)
+
+      const insertAt = beforeTaskId
+        ? tierTasks.findIndex((t) => t.id === beforeTaskId)
+        : -1
+      const idx = insertAt === -1 ? tierTasks.length : insertAt
+      tierTasks.splice(idx, 0, { ...moved, tier })
+
+      const updates = tierTasks.map((t, pos) => ({ id: t.id, position: (pos + 1) * 1000 }))
+
+      if (demo) {
+        demo.setTasks((prev) =>
+          prev.map((t) => {
+            const u = updates.find((u) => u.id === t.id)
+            if (!u) return t
+            return t.id === taskId ? { ...t, tier, position: u.position } : { ...t, position: u.position }
+          })
+        )
+        return
+      }
+
+      setTasks((prev) =>
+        prev.map((t) => {
+          const u = updates.find((u) => u.id === t.id)
+          if (!u) return t
+          return t.id === taskId ? { ...t, tier, position: u.position } : { ...t, position: u.position }
+        })
+      )
+
+      const supabase = createClient()
+      Promise.all(
+        updates.map(({ id, position }) =>
+          supabase
+            .from("tasks")
+            .update(id === taskId ? { tier, position } : { position })
+            .eq("id", id)
+        )
+      ).then((results) => {
+        const failed = results.find((r) => r.error)
+        if (failed?.error) console.error("Failed to reorder tasks:", failed.error)
+      })
+    },
+    [demo]
+  )
+
   const deleteTask = useCallback(async (id: string) => {
     if (demo) {
       demo.setTasks((prev) => prev.filter((t) => t.id !== id))
@@ -166,5 +219,5 @@ export function useDay(date: string) {
     [date, demo]
   )
 
-  return { tasks: demoTasks, loading, addTask, updateTask, deleteTask, upsertTimedBlock }
+  return { tasks: demoTasks, loading, addTask, updateTask, deleteTask, upsertTimedBlock, reorderTask }
 }

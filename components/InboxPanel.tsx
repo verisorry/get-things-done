@@ -12,6 +12,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { useInbox } from "@/hooks/use-inbox"
+import { cn } from "@/lib/utils"
 import type { InboxItem } from "@/lib/types"
 
 const MIN_WIDTH = 220
@@ -27,7 +28,7 @@ function parseInput(value: string): { title: string; tag: string | null } {
 }
 
 export function InboxPanel() {
-  const { items, addItem, delegateItem, deleteItem, markDelegated } = useInbox()
+  const { items, addItem, delegateItem, deleteItem, markDelegated, reorderItem } = useInbox()
 
   useEffect(() => {
     function handleDelegated(e: Event) {
@@ -62,6 +63,10 @@ export function InboxPanel() {
         untagged.push(item)
       }
     }
+
+    const byPosition = (a: InboxItem, b: InboxItem) => a.position - b.position
+    untagged.sort(byPosition)
+    for (const list of tagMap.values()) list.sort(byPosition)
 
     const tags = Array.from(tagMap.entries()).sort((a, b) =>
       a[0].localeCompare(b[0])
@@ -133,18 +138,22 @@ export function InboxPanel() {
             {grouped.untagged.length > 0 && (
               <InboxSection
                 label="Inbox"
+                tag={null}
                 items={grouped.untagged}
                 onDelegate={delegateItem}
                 onDelete={deleteItem}
+                onReorder={reorderItem}
               />
             )}
             {grouped.tags.map(([tag, tagItems]) => (
               <InboxSection
                 key={tag}
                 label={tag}
+                tag={tag}
                 items={tagItems}
                 onDelegate={delegateItem}
                 onDelete={deleteItem}
+                onReorder={reorderItem}
               />
             ))}
           </div>
@@ -175,17 +184,83 @@ export function InboxPanel() {
 
 function InboxSection({
   label,
+  tag,
   items,
   onDelegate,
   onDelete,
+  onReorder,
 }: {
   label: string
+  tag: string | null
   items: InboxItem[]
   onDelegate: (id: string, date: string) => void
   onDelete: (id: string) => void
+  onReorder: (itemId: string, tag: string | null, beforeItemId: string | null) => void
 }) {
+  const [dropAtEnd, setDropAtEnd] = useState(false)
+  const [dragOverItem, setDragOverItem] = useState<{ id: string; position: "before" | "after" } | null>(null)
+
+  function handleSectionDragOver(e: React.DragEvent) {
+    if (!e.dataTransfer.types.includes("application/inbox-id")) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = "move"
+    setDropAtEnd(true)
+  }
+
+  function handleSectionDragLeave(e: React.DragEvent) {
+    if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) {
+      setDropAtEnd(false)
+    }
+  }
+
+  function handleSectionDrop(e: React.DragEvent) {
+    const draggedId = e.dataTransfer.getData("application/inbox-id")
+    if (!draggedId) return
+    e.preventDefault()
+    setDropAtEnd(false)
+    onReorder(draggedId, tag, null)
+  }
+
+  function handleRowDragOver(e: React.DragEvent, item: InboxItem) {
+    if (!e.dataTransfer.types.includes("application/inbox-id")) return
+    e.preventDefault()
+    e.stopPropagation()
+    e.dataTransfer.dropEffect = "move"
+    const rect = e.currentTarget.getBoundingClientRect()
+    const position = e.clientY - rect.top < rect.height / 2 ? "before" : "after"
+    setDragOverItem({ id: item.id, position })
+  }
+
+  function handleRowDragLeave(e: React.DragEvent) {
+    if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) {
+      setDragOverItem(null)
+    }
+  }
+
+  function handleRowDrop(e: React.DragEvent, item: InboxItem) {
+    const draggedId = e.dataTransfer.getData("application/inbox-id")
+    if (!draggedId) return
+    e.preventDefault()
+    e.stopPropagation()
+    if (draggedId === item.id) { setDragOverItem(null); return }
+
+    const position = dragOverItem?.id === item.id ? dragOverItem.position : "before"
+    const idx = items.findIndex((i) => i.id === item.id)
+    const beforeId = position === "before" ? item.id : (items[idx + 1]?.id ?? null)
+    onReorder(draggedId, tag, beforeId)
+    setDragOverItem(null)
+  }
+
   return (
-    <section className="overflow-hidden rounded-[16px] bg-card shadow-card dark:border dark:border-white/[0.06] dark:bg-white/[0.04] dark:shadow-none">
+    <section
+      className={cn(
+        "overflow-hidden rounded-[16px] bg-card shadow-card dark:border dark:border-white/[0.06] dark:bg-white/[0.04] dark:shadow-none",
+        dropAtEnd && "ring-1 ring-ring/30"
+      )}
+      onDragOver={handleSectionDragOver}
+      onDragLeave={handleSectionDragLeave}
+      onDrop={handleSectionDrop}
+    >
       <div className="flex items-center gap-2 px-4 pt-3 pb-1">
         <span className="size-2.5 shrink-0 rounded-full bg-muted-foreground/50 shadow-[0_0_6px_rgba(120,113,108,0.3)]" />
         <span className="text-[11px] font-semibold tracking-[0.06em] text-muted-foreground">
@@ -202,6 +277,10 @@ function InboxSection({
             item={item}
             onDelegate={onDelegate}
             onDelete={onDelete}
+            dropIndicator={dragOverItem?.id === item.id ? dragOverItem.position : null}
+            onRowDragOver={(e) => handleRowDragOver(e, item)}
+            onRowDragLeave={handleRowDragLeave}
+            onRowDrop={(e) => handleRowDrop(e, item)}
           />
         ))}
       </div>
@@ -213,10 +292,18 @@ function InboxRow({
   item,
   onDelegate,
   onDelete,
+  dropIndicator,
+  onRowDragOver,
+  onRowDragLeave,
+  onRowDrop,
 }: {
   item: InboxItem
   onDelegate: (id: string, date: string) => void
   onDelete: (id: string) => void
+  dropIndicator?: "before" | "after" | null
+  onRowDragOver: (e: React.DragEvent) => void
+  onRowDragLeave: (e: React.DragEvent) => void
+  onRowDrop: (e: React.DragEvent) => void
 }) {
   const [open, setOpen] = useState(false)
   const today = format(new Date(), "yyyy-MM-dd")
@@ -235,7 +322,14 @@ function InboxRow({
         e.dataTransfer.setData("application/inbox-title", item.title)
         e.dataTransfer.effectAllowed = "move"
       }}
-      className="group flex cursor-grab items-start gap-2 rounded-lg px-2 py-2 hover:bg-secondary/50 active:cursor-grabbing"
+      onDragOver={onRowDragOver}
+      onDragLeave={onRowDragLeave}
+      onDrop={onRowDrop}
+      className={cn(
+        "group flex cursor-grab items-start gap-2 rounded-lg border-t-2 border-b-2 border-transparent px-2 py-2 hover:bg-secondary/50 active:cursor-grabbing",
+        dropIndicator === "before" && "border-t-ring",
+        dropIndicator === "after" && "border-b-ring"
+      )}
     >
       <span className="flex-1 break-words text-sm">{item.title}</span>
 
