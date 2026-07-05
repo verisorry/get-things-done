@@ -1,15 +1,14 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { format, addDays, getMonth, getYear } from "date-fns"
+import { format, addDays, startOfWeek, getMonth, getYear } from "date-fns"
 import Image from "next/image"
-import { CalendarDays, CheckSquare, Inbox, LogOut, Target, Trash2, UtensilsCrossed } from "lucide-react"
+import { CheckSquare, ChevronLeft, ChevronRight, LogOut, Target, Trash2, UtensilsCrossed } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -18,17 +17,24 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { useDay } from "@/hooks/use-day"
-import { useInbox } from "@/hooks/use-inbox"
 import { useMealPlan } from "@/hooks/use-meal-plan"
+import { useWeekMealPlan } from "@/hooks/use-week-meal-plan"
 import { useMonthlyGoals } from "@/hooks/use-monthly-goals"
 import { useDemoContext } from "@/lib/demo-context"
 import { createClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
-import type { Task, TaskTier, InboxItem, MonthlyGoal, MealType } from "@/lib/types"
+import type { Task, TaskTier, MonthlyGoal, MealType } from "@/lib/types"
 
 const today = new Date()
 const todayStr = format(today, "yyyy-MM-dd")
-const todayLabel = format(today, "EEEE, MMMM d")
+
+function formatMobileTime(time: string) {
+  const [h, m] = time.split(":").map(Number)
+  const period = h < 12 ? "AM" : "PM"
+  const hour = h === 0 ? 12 : h > 12 ? h - 12 : h
+  const minutes = String(m).padStart(2, "0")
+  return `${hour}:${minutes} ${period}`
+}
 
 const TIERS: { key: TaskTier; label: string; dot: string }[] = [
   { key: "focus",     label: "Focus",     dot: "bg-tier-focus" },
@@ -44,16 +50,8 @@ const TIER_CHECKBOX: Record<TaskTier, string> = {
   other:     "border-tier-other",
 }
 
-function parseInput(value: string): { title: string; tag: string | null } {
-  const match = value.match(/@(\S+)/)
-  if (!match) return { title: value.trim(), tag: null }
-  const tag = match[1].toLowerCase()
-  const title = value.replace(match[0], "").trim()
-  return { title: title || tag, tag }
-}
-
 export function MobileApp() {
-  const [tab, setTab] = useState<"tasks" | "inbox">("tasks")
+  const [tab, setTab] = useState<"tasks" | "meals">("tasks")
   const demo = useDemoContext()
   const router = useRouter()
 
@@ -65,7 +63,7 @@ export function MobileApp() {
   return (
     <div className="flex h-full w-full flex-col">
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {tab === "tasks" ? <TasksTab /> : <InboxTab />}
+        {tab === "tasks" ? <TasksTab /> : <MealsTab />}
       </div>
 
       {!demo && (
@@ -78,15 +76,15 @@ export function MobileApp() {
       )}
 
       <div className="pointer-events-none fixed right-0 bottom-[max(2rem,env(safe-area-inset-bottom))] left-0 z-50 flex justify-center">
-        <Tabs value={tab} onValueChange={(v) => setTab(v as "tasks" | "inbox")} className="pointer-events-auto">
+        <Tabs value={tab} onValueChange={(v) => setTab(v as "tasks" | "meals")} className="pointer-events-auto">
           <TabsList className="!h-12 px-1">
             <TabsTrigger value="tasks" className="gap-2 px-6 text-base">
               <CheckSquare className="size-5" />
               Today
             </TabsTrigger>
-            <TabsTrigger value="inbox" className="gap-2 px-6 text-base">
-              <Inbox className="size-5" />
-              Inbox
+            <TabsTrigger value="meals" className="gap-2 px-6 text-base">
+              <UtensilsCrossed className="size-5" />
+              Meals
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -315,9 +313,17 @@ function MobileTaskRow({
         onCheckedChange={(checked) => onUpdate(task.id, { completed: checked === true })}
         className={cn("mt-px shrink-0", TIER_CHECKBOX[task.tier], "data-checked:border-completed data-checked:bg-completed")}
       />
-      <span className={cn("flex-1 break-words text-sm", task.completed && "line-through text-muted-foreground")}>
-        {task.title}
-      </span>
+      <div className="flex-1">
+        <span className={cn("block break-words text-sm", task.completed && "line-through text-muted-foreground")}>
+          {task.title}
+        </span>
+        {task.time_start && (
+          <span className="text-[11px] text-muted-foreground">
+            {formatMobileTime(task.time_start)}
+            {task.time_end && ` – ${formatMobileTime(task.time_end)}`}
+          </span>
+        )}
+      </div>
       <button
         onClick={() => onDelete(task.id)}
         className="mt-px shrink-0 text-muted-foreground/40 hover:text-destructive"
@@ -358,167 +364,75 @@ function MobileGoalRow({
   )
 }
 
-function InboxTab() {
-  const { items, addItem, delegateItem, deleteItem, markDelegated } = useInbox()
-  const [inputValue, setInputValue] = useState("")
-  const inputRef = useRef<HTMLInputElement>(null)
+function MealsTab() {
+  const [weekOffset, setWeekOffset] = useState(0)
+  const baseStart = startOfWeek(today, { weekStartsOn: 1 })
+  const weekStart = addDays(baseStart, weekOffset * 7)
+  const weekEnd = addDays(weekStart, 6)
+  const weekStartStr = format(weekStart, "yyyy-MM-dd")
 
-  useEffect(() => {
-    function handleReturn(e: Event) {
-      const { title } = (e as CustomEvent).detail
-      addItem(title, null)
-    }
-    window.addEventListener("task-to-inbox", handleReturn)
-    return () => window.removeEventListener("task-to-inbox", handleReturn)
-  }, [addItem])
-
-  const grouped = useMemo(() => {
-    const untagged: InboxItem[] = []
-    const tagMap = new Map<string, InboxItem[]>()
-    for (const item of items) {
-      if (item.tag) {
-        const list = tagMap.get(item.tag) || []
-        list.push(item)
-        tagMap.set(item.tag, list)
-      } else {
-        untagged.push(item)
-      }
-    }
-    return { untagged, tags: Array.from(tagMap.entries()).sort((a, b) => a[0].localeCompare(b[0])) }
-  }, [items])
-
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Enter") {
-      e.preventDefault()
-      const { title, tag } = parseInput(inputValue)
-      if (title) {
-        addItem(title, tag)
-        setInputValue("")
-      }
-    } else if (e.key === "Escape") {
-      setInputValue("")
-      inputRef.current?.blur()
-    }
-  }
+  const { getMeal, upsertMeal } = useWeekMealPlan(weekStartStr)
+  const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-5">
-        <div className="mb-4 flex items-center gap-2">
-          <Image src="/logo.png" alt="GTD" width={28} height={28} className="rounded-[7px]" />
-          <h1 className="text-2xl font-bold">Inbox</h1>
-          {items.length > 0 && (
-            <Badge variant="secondary">{items.length}</Badge>
-          )}
-        </div>
-
-        {items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-1 py-16">
-            <p className="text-sm font-medium text-muted-foreground">All clear!</p>
-            <p className="text-center text-xs text-muted-foreground/60">Add something below</p>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {grouped.untagged.length > 0 && (
-              <MobileInboxSection label="Inbox" items={grouped.untagged} onDelegate={delegateItem} onDelete={deleteItem} />
-            )}
-            {grouped.tags.map(([tag, tagItems]) => (
-              <MobileInboxSection key={tag} label={tag} items={tagItems} onDelegate={delegateItem} onDelete={deleteItem} />
-            ))}
-          </div>
-        )}
+    <div className="px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-36">
+      <div className="mb-4 flex items-center gap-2">
+        <Image src="/logo.png" alt="GTD" width={28} height={28} className="rounded-[7px]" />
+        <h1 className="text-2xl font-bold">Meals</h1>
       </div>
 
-      <div className="shrink-0 border-t border-white/80 bg-white/60 px-4 pt-3 pb-[max(4.5rem,calc(env(safe-area-inset-bottom)+6rem))] backdrop-blur-[20px] dark:border-white/[0.06] dark:bg-white/[0.03]">
-        <div className="flex items-center gap-3 rounded-2xl bg-secondary/60 px-4 py-3 dark:bg-white/[0.06]">
-          <div className="size-4 shrink-0 rounded-full border border-border" />
-          <input
-            ref={inputRef}
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-            placeholder="Add to inbox... @tag"
-          />
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function MobileInboxSection({
-  label,
-  items,
-  onDelegate,
-  onDelete,
-}: {
-  label: string
-  items: InboxItem[]
-  onDelegate: (id: string, date: string) => void
-  onDelete: (id: string) => void
-}) {
-  return (
-    <section className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-white/[0.04] dark:border dark:border-white/[0.06] dark:shadow-none">
-      <div className="flex items-center gap-2 px-4 pt-3 pb-1">
-        <span className="size-2 rounded-full bg-muted-foreground/50" />
-        <span className="text-[11px] font-semibold tracking-[0.06em] text-muted-foreground uppercase">
-          {label.charAt(0).toUpperCase() + label.slice(1)}
-        </span>
-        <Badge variant="secondary" className="ml-auto text-[9px]">{items.length}</Badge>
-      </div>
-      <div className="flex flex-col px-2 pb-2">
-        {items.map((item) => (
-          <MobileInboxRow key={item.id} item={item} onDelegate={onDelegate} onDelete={onDelete} />
-        ))}
-      </div>
-    </section>
-  )
-}
-
-function MobileInboxRow({
-  item,
-  onDelegate,
-  onDelete,
-}: {
-  item: InboxItem
-  onDelegate: (id: string, date: string) => void
-  onDelete: (id: string) => void
-}) {
-  const [open, setOpen] = useState(false)
-  const todayDate = format(new Date(), "yyyy-MM-dd")
-  const tomorrow = format(addDays(new Date(), 1), "yyyy-MM-dd")
-
-  function delegate(date: string) {
-    onDelegate(item.id, date)
-    setOpen(false)
-  }
-
-  return (
-    <div className="flex items-start gap-2 rounded-lg px-2 py-2">
-      <span className="flex-1 break-words text-sm">{item.title}</span>
-
-      <div className="flex shrink-0 items-center gap-0.5">
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild>
-            <Button variant="ghost" size="icon" className="size-7">
-              <CalendarDays className="size-4 text-muted-foreground" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent align="end" className="w-48 gap-1 p-2">
-            <Button variant="ghost" size="sm" onClick={() => delegate(todayDate)} className="w-full justify-start text-xs">Today</Button>
-            <Button variant="ghost" size="sm" onClick={() => delegate(tomorrow)} className="w-full justify-start text-xs">Tomorrow</Button>
-            <Separator className="my-1" />
-            <input
-              type="date"
-              onChange={(e) => { if (e.target.value) delegate(e.target.value) }}
-              className="w-full rounded-md bg-secondary px-2 py-1.5 text-xs outline-none"
-            />
-          </PopoverContent>
-        </Popover>
-
-        <Button variant="ghost" size="icon" onClick={() => onDelete(item.id)} className="size-7">
-          <Trash2 className="size-4 text-muted-foreground" />
+      <div className="mb-4 flex items-center justify-between">
+        <Button variant="ghost" size="icon" onClick={() => setWeekOffset((w) => w - 1)}>
+          <ChevronLeft className="size-4" />
         </Button>
+        <span className="text-sm font-medium text-muted-foreground">
+          {format(weekStart, "MMM d")} – {format(weekEnd, "MMM d")}
+        </span>
+        <Button variant="ghost" size="icon" onClick={() => setWeekOffset((w) => w + 1)}>
+          <ChevronRight className="size-4" />
+        </Button>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        {days.map((day) => {
+          const dateStr = format(day, "yyyy-MM-dd")
+          const isToday = dateStr === todayStr
+
+          return (
+            <section
+              key={dateStr}
+              className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-white/[0.04] dark:border dark:border-white/[0.06] dark:shadow-none"
+            >
+              <div className="flex items-center gap-2 px-4 pt-3 pb-1">
+                <span
+                  className={cn(
+                    "text-[11px] font-semibold tracking-[0.06em] uppercase",
+                    isToday ? "text-foreground" : "text-muted-foreground"
+                  )}
+                >
+                  {format(day, "EEEE, MMM d")}
+                </span>
+                {isToday && (
+                  <Badge variant="secondary" className="text-[9px]">Today</Badge>
+                )}
+              </div>
+              <div className="flex flex-col pb-2">
+                <MobileMealRow
+                  label="Lunch"
+                  meal="lunch"
+                  data={getMeal(dateStr, "lunch")}
+                  onSave={(meal, title, notes) => upsertMeal(dateStr, meal, title, notes)}
+                />
+                <MobileMealRow
+                  label="Dinner"
+                  meal="dinner"
+                  data={getMeal(dateStr, "dinner")}
+                  onSave={(meal, title, notes) => upsertMeal(dateStr, meal, title, notes)}
+                />
+              </div>
+            </section>
+          )
+        })}
       </div>
     </div>
   )
