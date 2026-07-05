@@ -1,11 +1,11 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useDemoContext } from "@/lib/demo-context"
-import type { PantryItem } from "@/lib/types"
+import type { PantryCategory, PantryItem } from "@/lib/types"
 
-export function usePantry(weekStart: string) {
+export function usePantry() {
   const demo = useDemoContext()
   const [items, setItems] = useState<PantryItem[]>([])
 
@@ -15,25 +15,24 @@ export function usePantry(weekStart: string) {
     supabase
       .from("pantry_items")
       .select("*")
-      .eq("week_start", weekStart)
       .order("position", { ascending: true })
       .then(({ data, error }) => {
         if (error) console.error("Failed to fetch pantry items:", error)
         setItems((data as PantryItem[]) ?? [])
       })
-  }, [weekStart, demo])
+  }, [demo])
 
   const allItems = demo ? demo.state.pantry : items
-  const weekItems = allItems
-    .filter((i) => i.week_start === weekStart)
-    .sort((a, b) => a.position - b.position)
+  const sortedItems = [...allItems].sort((a, b) => a.position - b.position)
+  const itemsRef = useRef<PantryItem[]>(allItems)
+  itemsRef.current = allItems
 
   const addItem = useCallback(
-    (title: string) => {
+    (title: string, category: PantryCategory) => {
       const item: PantryItem = {
         id: crypto.randomUUID(),
-        week_start: weekStart,
         title,
+        category,
         checked: false,
         position: Math.floor(Date.now() / 1000) % 2000000000,
         created_at: new Date().toISOString(),
@@ -50,15 +49,15 @@ export function usePantry(weekStart: string) {
         .from("pantry_items")
         .insert({
           id: item.id,
-          week_start: weekStart,
           title,
+          category,
           position: item.position,
         })
         .then(({ error }) => {
           if (error) console.error("Failed to add pantry item:", error)
         })
     },
-    [demo, weekStart]
+    [demo]
   )
 
   const toggleItem = useCallback(
@@ -91,6 +90,59 @@ export function usePantry(weekStart: string) {
     [demo]
   )
 
+  const reorderItem = useCallback(
+    (itemId: string, category: PantryCategory, beforeItemId: string | null) => {
+      const current = itemsRef.current
+      const moved = current.find((i) => i.id === itemId)
+      if (!moved) return
+
+      const groupItems = current
+        .filter((i) => i.id !== itemId && i.category === category)
+        .sort((a, b) => a.position - b.position)
+
+      const insertAt = beforeItemId
+        ? groupItems.findIndex((i) => i.id === beforeItemId)
+        : -1
+      const idx = insertAt === -1 ? groupItems.length : insertAt
+      groupItems.splice(idx, 0, { ...moved, category })
+
+      const updates = groupItems.map((i, pos) => ({ id: i.id, position: (pos + 1) * 1000 }))
+
+      if (demo) {
+        demo.setPantry((prev) =>
+          prev.map((i) => {
+            const u = updates.find((u) => u.id === i.id)
+            if (!u) return i
+            return i.id === itemId ? { ...i, category, position: u.position } : { ...i, position: u.position }
+          })
+        )
+        return
+      }
+
+      setItems((prev) =>
+        prev.map((i) => {
+          const u = updates.find((u) => u.id === i.id)
+          if (!u) return i
+          return i.id === itemId ? { ...i, category, position: u.position } : { ...i, position: u.position }
+        })
+      )
+
+      const supabase = createClient()
+      Promise.all(
+        updates.map(({ id, position }) =>
+          supabase
+            .from("pantry_items")
+            .update(id === itemId ? { category, position } : { position })
+            .eq("id", id)
+        )
+      ).then((results) => {
+        const failed = results.find((r) => r.error)
+        if (failed?.error) console.error("Failed to reorder pantry items:", failed.error)
+      })
+    },
+    [demo]
+  )
+
   const deleteItem = useCallback(
     (id: string) => {
       if (demo) {
@@ -111,5 +163,5 @@ export function usePantry(weekStart: string) {
     [demo]
   )
 
-  return { items: weekItems, addItem, toggleItem, deleteItem }
+  return { items: sortedItems, addItem, toggleItem, reorderItem, deleteItem }
 }

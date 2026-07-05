@@ -13,12 +13,27 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { useWeekMealPlan } from "@/hooks/use-week-meal-plan"
 import { usePantry } from "@/hooks/use-pantry"
 import { cn } from "@/lib/utils"
-import type { MealPlan, MealType, PantryItem } from "@/lib/types"
+import type { MealPlan, MealType, PantryCategory, PantryItem } from "@/lib/types"
 
 type DragKey = { date: string; meal: MealType }
+
+const PANTRY_CATEGORIES: { key: PantryCategory; label: string }[] = [
+  { key: "produce", label: "Produce" },
+  { key: "meat", label: "Meat & Seafood" },
+  { key: "noodles", label: "Ready-made" },
+  { key: "pantry", label: "Pantry" },
+  { key: "other", label: "Other" },
+]
 
 export function MealPlanPanel() {
   const [weekOffset, setWeekOffset] = useState(0)
@@ -32,7 +47,13 @@ export function MealPlanPanel() {
   const todayStr = format(new Date(), "yyyy-MM-dd")
 
   const { getMeal, upsertMeal, deleteMeal, swapMeals } = useWeekMealPlan(weekStartStr)
-  const { items: pantryItems, addItem: addPantryItem, toggleItem: togglePantryItem, deleteItem: deletePantryItem } = usePantry(weekStartStr)
+  const {
+    items: pantryItems,
+    addItem: addPantryItem,
+    toggleItem: togglePantryItem,
+    reorderItem: reorderPantryItem,
+    deleteItem: deletePantryItem,
+  } = usePantry()
 
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
 
@@ -122,6 +143,7 @@ export function MealPlanPanel() {
         items={pantryItems}
         onAdd={addPantryItem}
         onToggle={togglePantryItem}
+        onReorder={reorderPantryItem}
         onDelete={deletePantryItem}
       />
     </div>
@@ -132,19 +154,22 @@ function PantrySection({
   items,
   onAdd,
   onToggle,
+  onReorder,
   onDelete,
 }: {
   items: PantryItem[]
-  onAdd: (title: string) => void
+  onAdd: (title: string, category: PantryCategory) => void
   onToggle: (id: string) => void
+  onReorder: (itemId: string, category: PantryCategory, beforeItemId: string | null) => void
   onDelete: (id: string) => void
 }) {
   const [newTitle, setNewTitle] = useState("")
+  const [newCategory, setNewCategory] = useState<PantryCategory>("other")
 
   function handleAdd() {
     const trimmed = newTitle.trim()
     if (!trimmed) return
-    onAdd(trimmed)
+    onAdd(trimmed, newCategory)
     setNewTitle("")
   }
 
@@ -154,11 +179,162 @@ function PantrySection({
         Pantry
       </span>
 
-      <div className="mt-1.5 flex flex-col gap-0.5">
+      <div className="mt-1.5 flex flex-col gap-2">
+        {PANTRY_CATEGORIES.map(({ key, label }) => (
+          <PantryCategorySection
+            key={key}
+            category={key}
+            label={label}
+            items={items.filter((i) => i.category === key)}
+            onToggle={onToggle}
+            onReorder={onReorder}
+            onDelete={onDelete}
+          />
+        ))}
+      </div>
+
+      <div className="mt-1.5 flex items-center gap-1">
+        <Input
+          value={newTitle}
+          onChange={(e) => setNewTitle(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault()
+              handleAdd()
+            }
+          }}
+          placeholder="Add ingredient..."
+          className="h-6 flex-1 text-[11px]"
+        />
+        <Select value={newCategory} onValueChange={(v) => setNewCategory(v as PantryCategory)}>
+          <SelectTrigger size="sm" className="h-6 shrink-0 px-1.5 text-[10px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {PANTRY_CATEGORIES.map(({ key, label }) => (
+              <SelectItem key={key} value={key} className="text-xs">
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button
+          onClick={handleAdd}
+          size="icon"
+          variant="ghost"
+          className="size-6 shrink-0"
+        >
+          <Plus className="size-3.5" />
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+function PantryCategorySection({
+  category,
+  label,
+  items,
+  onToggle,
+  onReorder,
+  onDelete,
+}: {
+  category: PantryCategory
+  label: string
+  items: PantryItem[]
+  onToggle: (id: string) => void
+  onReorder: (itemId: string, category: PantryCategory, beforeItemId: string | null) => void
+  onDelete: (id: string) => void
+}) {
+  const [dropAtEnd, setDropAtEnd] = useState(false)
+  const [dragOverItem, setDragOverItem] = useState<{ id: string; position: "before" | "after" } | null>(null)
+
+  function handleSectionDragOver(e: React.DragEvent) {
+    if (!e.dataTransfer.types.includes("application/pantry-id")) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = "move"
+    setDropAtEnd(true)
+  }
+
+  function handleSectionDragLeave(e: React.DragEvent) {
+    if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) {
+      setDropAtEnd(false)
+    }
+  }
+
+  function handleSectionDrop(e: React.DragEvent) {
+    const draggedId = e.dataTransfer.getData("application/pantry-id")
+    if (!draggedId) return
+    e.preventDefault()
+    setDropAtEnd(false)
+    onReorder(draggedId, category, null)
+  }
+
+  function handleRowDragOver(e: React.DragEvent, item: PantryItem) {
+    if (!e.dataTransfer.types.includes("application/pantry-id")) return
+    e.preventDefault()
+    e.stopPropagation()
+    e.dataTransfer.dropEffect = "move"
+    const rect = e.currentTarget.getBoundingClientRect()
+    const position = e.clientY - rect.top < rect.height / 2 ? "before" : "after"
+    setDragOverItem({ id: item.id, position })
+  }
+
+  function handleRowDragLeave(e: React.DragEvent) {
+    if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) {
+      setDragOverItem(null)
+    }
+  }
+
+  function handleRowDrop(e: React.DragEvent, item: PantryItem) {
+    const draggedId = e.dataTransfer.getData("application/pantry-id")
+    if (!draggedId) return
+    e.preventDefault()
+    e.stopPropagation()
+    if (draggedId === item.id) {
+      setDragOverItem(null)
+      return
+    }
+
+    const position = dragOverItem?.id === item.id ? dragOverItem.position : "before"
+    const idx = items.findIndex((i) => i.id === item.id)
+    const beforeId = position === "before" ? item.id : (items[idx + 1]?.id ?? null)
+    onReorder(draggedId, category, beforeId)
+    setDragOverItem(null)
+  }
+
+  return (
+    <div
+      onDragOver={handleSectionDragOver}
+      onDragLeave={handleSectionDragLeave}
+      onDrop={handleSectionDrop}
+      className={cn("rounded", dropAtEnd && "ring-1 ring-[#007aff]/40")}
+    >
+      <span className="text-[9px] font-medium text-muted-foreground/70">
+        {label}
+      </span>
+      <div className="mt-0.5 flex min-h-[20px] flex-col gap-0.5">
+        {items.length === 0 && (
+          <span className="px-1 py-0.5 text-[10px] text-muted-foreground/30">
+            No items
+          </span>
+        )}
         {items.map((item) => (
           <div
             key={item.id}
-            className="group flex items-center gap-1.5 rounded px-1 py-0.5 hover:bg-secondary/50"
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.setData("application/pantry-id", item.id)
+              e.dataTransfer.effectAllowed = "move"
+            }}
+            onDragOver={(e) => handleRowDragOver(e, item)}
+            onDragLeave={handleRowDragLeave}
+            onDrop={(e) => handleRowDrop(e, item)}
+            className={cn(
+              "group flex cursor-grab items-center gap-1.5 rounded border-t-2 border-b-2 border-transparent px-1 py-0.5 hover:bg-secondary/50 active:cursor-grabbing",
+              dragOverItem?.id === item.id && dragOverItem.position === "before" && "border-t-[#007aff]",
+              dragOverItem?.id === item.id && dragOverItem.position === "after" && "border-b-[#007aff]"
+            )}
           >
             <Checkbox
               checked={item.checked}
@@ -181,29 +357,6 @@ function PantrySection({
             </button>
           </div>
         ))}
-      </div>
-
-      <div className="mt-1.5 flex items-center gap-1">
-        <Input
-          value={newTitle}
-          onChange={(e) => setNewTitle(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault()
-              handleAdd()
-            }
-          }}
-          placeholder="Add ingredient..."
-          className="h-6 flex-1 text-[11px]"
-        />
-        <Button
-          onClick={handleAdd}
-          size="icon"
-          variant="ghost"
-          className="size-6 shrink-0"
-        >
-          <Plus className="size-3.5" />
-        </Button>
       </div>
     </div>
   )

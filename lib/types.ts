@@ -45,10 +45,12 @@ export interface MealPlan {
   created_at: string
 }
 
+export type PantryCategory = 'produce' | 'meat' | 'noodles' | 'pantry' | 'other'
+
 export interface PantryItem {
   id: string
-  week_start: string
   title: string
+  category: PantryCategory
   checked: boolean
   position: number
   created_at: string

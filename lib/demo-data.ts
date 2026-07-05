@@ -1,4 +1,4 @@
-import { format, addDays, subDays, startOfWeek } from "date-fns"
+import { format, addDays, subDays } from "date-fns"
 import type { Task, MonthlyGoal, MealPlan, InboxItem, PantryItem } from "./types"
 
 const today = new Date()
@@ -6,7 +6,6 @@ const todayStr = format(today, "yyyy-MM-dd")
 const yesterdayStr = format(subDays(today, 1), "yyyy-MM-dd")
 const tomorrowStr = format(addDays(today, 1), "yyyy-MM-dd")
 const twoDaysAgo = format(subDays(today, 2), "yyyy-MM-dd")
-const weekStartStr = format(startOfWeek(today, { weekStartsOn: 1 }), "yyyy-MM-dd")
 
 export const DEMO_TASKS: Task[] = [
   // Today
@@ -49,11 +48,11 @@ export const DEMO_MEALS: MealPlan[] = [
 ]
 
 export const DEMO_PANTRY: PantryItem[] = [
-  { id: "d-p1", week_start: weekStartStr, title: "Chicken breast", checked: true, position: 1000, created_at: todayStr },
-  { id: "d-p2", week_start: weekStartStr, title: "Romaine lettuce", checked: true, position: 2000, created_at: todayStr },
-  { id: "d-p3", week_start: weekStartStr, title: "Parmesan", checked: false, position: 3000, created_at: todayStr },
-  { id: "d-p4", week_start: weekStartStr, title: "Guanciale", checked: false, position: 4000, created_at: todayStr },
-  { id: "d-p5", week_start: weekStartStr, title: "Eggs", checked: true, position: 5000, created_at: todayStr },
+  { id: "d-p1", title: "Chicken breast", category: "meat", checked: true, position: 1000, created_at: todayStr },
+  { id: "d-p2", title: "Romaine lettuce", category: "produce", checked: true, position: 2000, created_at: todayStr },
+  { id: "d-p3", title: "Tofu", category: "noodles", checked: false, position: 3000, created_at: todayStr },
+  { id: "d-p4", title: "Guanciale", category: "meat", checked: false, position: 4000, created_at: todayStr },
+  { id: "d-p5", title: "Udon", category: "noodles", checked: true, position: 5000, created_at: todayStr },
 ]
 
 export const DEMO_INBOX: InboxItem[] = [
