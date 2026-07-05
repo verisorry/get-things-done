@@ -44,3 +44,12 @@ export interface MealPlan {
   notes: string | null
   created_at: string
 }
+
+export interface PantryItem {
+  id: string
+  week_start: string
+  title: string
+  checked: boolean
+  position: number
+  created_at: string
+}

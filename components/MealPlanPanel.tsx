@@ -2,18 +2,21 @@
 
 import { Fragment, useRef, useState } from "react"
 import { addDays, format, startOfWeek } from "date-fns"
-import { ChevronLeft, ChevronRight, Trash2 } from "lucide-react"
+import { ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Separator } from "@/components/ui/separator"
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { useWeekMealPlan } from "@/hooks/use-week-meal-plan"
+import { usePantry } from "@/hooks/use-pantry"
 import { cn } from "@/lib/utils"
-import type { MealPlan, MealType } from "@/lib/types"
+import type { MealPlan, MealType, PantryItem } from "@/lib/types"
 
 type DragKey = { date: string; meal: MealType }
 
@@ -29,6 +32,7 @@ export function MealPlanPanel() {
   const todayStr = format(new Date(), "yyyy-MM-dd")
 
   const { getMeal, upsertMeal, deleteMeal, swapMeals } = useWeekMealPlan(weekStartStr)
+  const { items: pantryItems, addItem: addPantryItem, toggleItem: togglePantryItem, deleteItem: deletePantryItem } = usePantry(weekStartStr)
 
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
 
@@ -110,6 +114,96 @@ export function MealPlanPanel() {
             </Fragment>
           )
         })}
+      </div>
+
+      <Separator className="my-3" />
+
+      <PantrySection
+        items={pantryItems}
+        onAdd={addPantryItem}
+        onToggle={togglePantryItem}
+        onDelete={deletePantryItem}
+      />
+    </div>
+  )
+}
+
+function PantrySection({
+  items,
+  onAdd,
+  onToggle,
+  onDelete,
+}: {
+  items: PantryItem[]
+  onAdd: (title: string) => void
+  onToggle: (id: string) => void
+  onDelete: (id: string) => void
+}) {
+  const [newTitle, setNewTitle] = useState("")
+
+  function handleAdd() {
+    const trimmed = newTitle.trim()
+    if (!trimmed) return
+    onAdd(trimmed)
+    setNewTitle("")
+  }
+
+  return (
+    <div>
+      <span className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground">
+        Pantry
+      </span>
+
+      <div className="mt-1.5 flex flex-col gap-0.5">
+        {items.map((item) => (
+          <div
+            key={item.id}
+            className="group flex items-center gap-1.5 rounded px-1 py-0.5 hover:bg-secondary/50"
+          >
+            <Checkbox
+              checked={item.checked}
+              onCheckedChange={() => onToggle(item.id)}
+              className="size-3.5"
+            />
+            <span
+              className={cn(
+                "flex-1 truncate text-[11px]",
+                item.checked && "text-muted-foreground/50 line-through"
+              )}
+            >
+              {item.title}
+            </span>
+            <button
+              onClick={() => onDelete(item.id)}
+              className="opacity-0 transition-opacity group-hover:opacity-100"
+            >
+              <Trash2 className="size-3 text-muted-foreground" />
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-1.5 flex items-center gap-1">
+        <Input
+          value={newTitle}
+          onChange={(e) => setNewTitle(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault()
+              handleAdd()
+            }
+          }}
+          placeholder="Add ingredient..."
+          className="h-6 flex-1 text-[11px]"
+        />
+        <Button
+          onClick={handleAdd}
+          size="icon"
+          variant="ghost"
+          className="size-6 shrink-0"
+        >
+          <Plus className="size-3.5" />
+        </Button>
       </div>
     </div>
   )
