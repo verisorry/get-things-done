@@ -35,7 +35,7 @@ export function usePantry(weekStart: string) {
         week_start: weekStart,
         title,
         checked: false,
-        position: Date.now(),
+        position: Math.floor(Date.now() / 1000) % 2000000000,
         created_at: new Date().toISOString(),
       }
 
