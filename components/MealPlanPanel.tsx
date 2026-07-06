@@ -1,6 +1,6 @@
 "use client"
 
-import { Fragment, useRef, useState } from "react"
+import { Fragment, useEffect, useRef, useState } from "react"
 import { addDays, format, startOfWeek } from "date-fns"
 import { ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -13,13 +13,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { useWeekMealPlan } from "@/hooks/use-week-meal-plan"
 import { usePantry } from "@/hooks/use-pantry"
 import { cn } from "@/lib/utils"
@@ -165,16 +158,6 @@ function PantrySection({
   onReorder: (itemId: string, category: PantryCategory, beforeItemId: string | null) => void
   onDelete: (id: string) => void
 }) {
-  const [newTitle, setNewTitle] = useState("")
-  const [newCategory, setNewCategory] = useState<PantryCategory>("other")
-
-  function handleAdd() {
-    const trimmed = newTitle.trim()
-    if (!trimmed) return
-    onAdd(trimmed, newCategory)
-    setNewTitle("")
-  }
-
   return (
     <div className="flex min-h-0 flex-1 flex-col px-2.5">
       <span className="shrink-0 text-[9px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -182,54 +165,20 @@ function PantrySection({
       </span>
 
       <div className="mt-1.5 min-h-0 flex-1 overflow-y-auto">
-        <div className="flex flex-col gap-2 pb-1.5">
+        <div className="flex flex-col gap-2 pb-2.5">
           {PANTRY_CATEGORIES.map(({ key, label }) => (
             <PantryCategorySection
               key={key}
               category={key}
               label={label}
               items={items.filter((i) => i.category === key)}
+              onAdd={onAdd}
               onToggle={onToggle}
               onReorder={onReorder}
               onDelete={onDelete}
             />
           ))}
         </div>
-      </div>
-
-      <div className="mt-1.5 shrink-0 flex items-center gap-1 pb-2.5">
-        <Input
-          value={newTitle}
-          onChange={(e) => setNewTitle(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault()
-              handleAdd()
-            }
-          }}
-          placeholder="Add ingredient..."
-          className="h-6 flex-1 text-[11px]"
-        />
-        <Select value={newCategory} onValueChange={(v) => setNewCategory(v as PantryCategory)}>
-          <SelectTrigger size="sm" className="h-6 shrink-0 px-1.5 text-[10px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {PANTRY_CATEGORIES.map(({ key, label }) => (
-              <SelectItem key={key} value={key} className="text-xs">
-                {label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Button
-          onClick={handleAdd}
-          size="icon"
-          variant="ghost"
-          className="size-6 shrink-0"
-        >
-          <Plus className="size-3.5" />
-        </Button>
       </div>
     </div>
   )
@@ -239,6 +188,7 @@ function PantryCategorySection({
   category,
   label,
   items,
+  onAdd,
   onToggle,
   onReorder,
   onDelete,
@@ -246,12 +196,41 @@ function PantryCategorySection({
   category: PantryCategory
   label: string
   items: PantryItem[]
+  onAdd: (title: string, category: PantryCategory) => void
   onToggle: (id: string) => void
   onReorder: (itemId: string, category: PantryCategory, beforeItemId: string | null) => void
   onDelete: (id: string) => void
 }) {
   const [dropAtEnd, setDropAtEnd] = useState(false)
   const [dragOverItem, setDragOverItem] = useState<{ id: string; position: "before" | "after" } | null>(null)
+  const [adding, setAdding] = useState(false)
+  const [newTitle, setNewTitle] = useState("")
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (adding) inputRef.current?.focus()
+  }, [adding])
+
+  function handleAddKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Enter") {
+      e.preventDefault()
+      const trimmed = newTitle.trim()
+      if (trimmed) {
+        onAdd(trimmed, category)
+        setNewTitle("")
+      }
+    } else if (e.key === "Escape") {
+      setNewTitle("")
+      setAdding(false)
+    }
+  }
+
+  function handleAddBlur() {
+    const trimmed = newTitle.trim()
+    if (trimmed) onAdd(trimmed, category)
+    setNewTitle("")
+    setAdding(false)
+  }
 
   function handleSectionDragOver(e: React.DragEvent) {
     if (!e.dataTransfer.types.includes("application/pantry-id")) return
@@ -312,13 +291,24 @@ function PantryCategorySection({
       onDragOver={handleSectionDragOver}
       onDragLeave={handleSectionDragLeave}
       onDrop={handleSectionDrop}
-      className={cn("rounded", dropAtEnd && "ring-1 ring-[#007aff]/40")}
+      className={cn("group/section rounded", dropAtEnd && "ring-1 ring-[#007aff]/40")}
     >
-      <span className="text-[9px] font-medium text-muted-foreground/70">
-        {label}
-      </span>
+      <div className="flex items-center justify-between">
+        <span className="text-[9px] font-medium text-muted-foreground/70">
+          {label}
+        </span>
+        <button
+          onClick={() => {
+            setNewTitle("")
+            setAdding(true)
+          }}
+          className="opacity-0 transition-opacity group-hover/section:opacity-100 focus:opacity-100"
+        >
+          <Plus className="size-3 text-muted-foreground" />
+        </button>
+      </div>
       <div className="mt-0.5 flex min-h-[20px] flex-col gap-0.5">
-        {items.length === 0 && (
+        {items.length === 0 && !adding && (
           <span className="px-1 py-0.5 text-[10px] text-muted-foreground/30">
             No items
           </span>
@@ -361,6 +351,20 @@ function PantryCategorySection({
             </button>
           </div>
         ))}
+        {adding && (
+          <div className="flex items-center gap-1.5 px-1 py-0.5">
+            <div className="size-3.5 shrink-0 rounded-full border border-border" />
+            <input
+              ref={inputRef}
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              onKeyDown={handleAddKeyDown}
+              onBlur={handleAddBlur}
+              className="flex-1 bg-transparent text-[11px] outline-none placeholder:text-muted-foreground"
+              placeholder="Add ingredient..."
+            />
+          </div>
+        )}
       </div>
     </div>
   )
