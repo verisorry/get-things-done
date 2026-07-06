@@ -71,73 +71,75 @@ export function MealPlanPanel() {
   }
 
   return (
-    <div className="shrink-0 px-2.5 pb-2.5">
-      <div className="flex items-center justify-between py-1.5">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-6"
-          onClick={() => setWeekOffset((w) => w - 1)}
-        >
-          <ChevronLeft className="size-3.5" />
-        </Button>
-        <span className="text-[10px] font-medium text-muted-foreground">
-          {format(weekStart, "MMM d")} – {format(weekEnd, "MMM d")}
-        </span>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-6"
-          onClick={() => setWeekOffset((w) => w + 1)}
-        >
-          <ChevronRight className="size-3.5" />
-        </Button>
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="shrink-0 px-2.5">
+        <div className="flex items-center justify-between py-1.5">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-6"
+            onClick={() => setWeekOffset((w) => w - 1)}
+          >
+            <ChevronLeft className="size-3.5" />
+          </Button>
+          <span className="text-[10px] font-medium text-muted-foreground">
+            {format(weekStart, "MMM d")} – {format(weekEnd, "MMM d")}
+          </span>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-6"
+            onClick={() => setWeekOffset((w) => w + 1)}
+          >
+            <ChevronRight className="size-3.5" />
+          </Button>
+        </div>
+
+        <div className="mb-1 grid grid-cols-[28px_1fr_1fr] gap-x-1 text-[9px] font-medium uppercase tracking-wide text-muted-foreground">
+          <span />
+          <span className="text-center">L</span>
+          <span className="text-center">D</span>
+        </div>
+
+        <div className="grid grid-cols-[28px_1fr_1fr] gap-x-1 gap-y-0.5">
+          {days.map((day) => {
+            const dateStr = format(day, "yyyy-MM-dd")
+            const isToday = dateStr === todayStr
+
+            return (
+              <Fragment key={dateStr}>
+                <span
+                  className={cn(
+                    "flex items-center text-[10px]",
+                    isToday
+                      ? "font-semibold text-foreground"
+                      : "font-medium text-muted-foreground"
+                  )}
+                >
+                  {format(day, "EEE")}
+                </span>
+                {(["lunch", "dinner"] as MealType[]).map((mealType) => (
+                  <MealCell
+                    key={mealType}
+                    date={dateStr}
+                    meal={mealType}
+                    data={getMeal(dateStr, mealType)}
+                    isDropTarget={dragOver?.date === dateStr && dragOver?.meal === mealType}
+                    onSave={upsertMeal}
+                    onDelete={deleteMeal}
+                    onDragStart={handleDragStart}
+                    onDragOver={(date, meal) => setDragOver({ date, meal })}
+                    onDragLeave={() => setDragOver(null)}
+                    onDrop={handleDrop}
+                  />
+                ))}
+              </Fragment>
+            )
+          })}
+        </div>
+
+        <Separator className="my-3" />
       </div>
-
-      <div className="mb-1 grid grid-cols-[28px_1fr_1fr] gap-x-1 text-[9px] font-medium uppercase tracking-wide text-muted-foreground">
-        <span />
-        <span className="text-center">L</span>
-        <span className="text-center">D</span>
-      </div>
-
-      <div className="grid grid-cols-[28px_1fr_1fr] gap-x-1 gap-y-0.5">
-        {days.map((day) => {
-          const dateStr = format(day, "yyyy-MM-dd")
-          const isToday = dateStr === todayStr
-
-          return (
-            <Fragment key={dateStr}>
-              <span
-                className={cn(
-                  "flex items-center text-[10px]",
-                  isToday
-                    ? "font-semibold text-foreground"
-                    : "font-medium text-muted-foreground"
-                )}
-              >
-                {format(day, "EEE")}
-              </span>
-              {(["lunch", "dinner"] as MealType[]).map((mealType) => (
-                <MealCell
-                  key={mealType}
-                  date={dateStr}
-                  meal={mealType}
-                  data={getMeal(dateStr, mealType)}
-                  isDropTarget={dragOver?.date === dateStr && dragOver?.meal === mealType}
-                  onSave={upsertMeal}
-                  onDelete={deleteMeal}
-                  onDragStart={handleDragStart}
-                  onDragOver={(date, meal) => setDragOver({ date, meal })}
-                  onDragLeave={() => setDragOver(null)}
-                  onDrop={handleDrop}
-                />
-              ))}
-            </Fragment>
-          )
-        })}
-      </div>
-
-      <Separator className="my-3" />
 
       <PantrySection
         items={pantryItems}
@@ -174,26 +176,28 @@ function PantrySection({
   }
 
   return (
-    <div>
-      <span className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground">
+    <div className="flex min-h-0 flex-1 flex-col px-2.5">
+      <span className="shrink-0 text-[9px] font-medium uppercase tracking-wide text-muted-foreground">
         Pantry
       </span>
 
-      <div className="mt-1.5 flex flex-col gap-2">
-        {PANTRY_CATEGORIES.map(({ key, label }) => (
-          <PantryCategorySection
-            key={key}
-            category={key}
-            label={label}
-            items={items.filter((i) => i.category === key)}
-            onToggle={onToggle}
-            onReorder={onReorder}
-            onDelete={onDelete}
-          />
-        ))}
+      <div className="mt-1.5 min-h-0 flex-1 overflow-y-auto">
+        <div className="flex flex-col gap-2 pb-1.5">
+          {PANTRY_CATEGORIES.map(({ key, label }) => (
+            <PantryCategorySection
+              key={key}
+              category={key}
+              label={label}
+              items={items.filter((i) => i.category === key)}
+              onToggle={onToggle}
+              onReorder={onReorder}
+              onDelete={onDelete}
+            />
+          ))}
+        </div>
       </div>
 
-      <div className="mt-1.5 flex items-center gap-1">
+      <div className="mt-1.5 shrink-0 flex items-center gap-1 pb-2.5">
         <Input
           value={newTitle}
           onChange={(e) => setNewTitle(e.target.value)}
