@@ -170,7 +170,7 @@ export function TaskList({
   }
 
   return (
-    <div className="flex flex-col gap-3 p-4">
+    <div className="flex min-w-0 flex-col gap-3 p-4">
       {TIERS.map(({ key, label, tip, dot, glow }) => {
         const tierTasks = tasks
           .filter((t) => t.tier === key && !t.source)
@@ -371,14 +371,14 @@ function MealTaskRow({
       <div
         draggable
         onDragStart={handleDragStart}
-        className="group flex cursor-grab items-center gap-1.5 px-1.5 py-2.5 active:cursor-grabbing"
+        className="group flex min-w-0 cursor-grab items-center gap-1.5 px-1.5 py-2.5 active:cursor-grabbing"
       >
         <GripVertical className="size-3 shrink-0 text-muted-foreground/40 opacity-0 transition-opacity group-hover:opacity-100" />
-        <Utensils className="size-4 shrink-0 text-muted-foreground/40" />
+        <Utensils className="mt-px size-4 shrink-0 self-start text-muted-foreground/40" />
         <button
           onClick={() => handleOpenChange(true)}
           className={cn(
-            "flex-1 text-left text-sm",
+            "min-w-0 flex-1 wrap-break-word text-left text-sm",
             data ? "text-foreground" : "text-muted-foreground"
           )}
         >

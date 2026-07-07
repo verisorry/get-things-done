@@ -65,8 +65,8 @@ export function DayPanel({
       )}
 
       <div className="flex min-h-0 flex-1">
-        <div className="flex min-h-0 flex-[3] flex-col">
-          <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="flex min-h-0 min-w-0 flex-3 flex-col">
+          <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
             <TaskList
               tasks={tasks}
               date={date}
