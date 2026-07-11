@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { format, getDaysInMonth } from "date-fns"
+import Image from "next/image"
 import {
   ChevronLeft,
   ChevronRight,
@@ -162,9 +163,11 @@ export function GoalsSidebar() {
       <div className="flex h-full" style={{ width: totalW }}>
         {/* Icon rail */}
         <div className="flex w-12 shrink-0 flex-col items-center border-r border-border pt-3 pb-3">
-          <img
+          <Image
             src="/logo.png"
             alt="Get Things Done"
+            width={28}
+            height={28}
             className="mb-3 size-7 rounded-lg"
           />
           <div className="flex flex-col items-center gap-1">

@@ -414,11 +414,6 @@ function MealCell({
     setOpen(false)
   }
 
-  function handleClear(e: React.MouseEvent) {
-    e.stopPropagation()
-    onDelete(date, meal)
-  }
-
   return (
     <div className="group relative min-w-0">
       <Popover open={open} onOpenChange={handleOpenChange}>

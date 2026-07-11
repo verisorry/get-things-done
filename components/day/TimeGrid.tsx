@@ -120,7 +120,7 @@ export function TimeGrid({
     const y = e.clientY - rect.top
     const slot = Math.floor(y / SLOT_HEIGHT)
     return Math.max(0, Math.min(slot, TOTAL_SLOTS - DEFAULT_DURATION_SLOTS))
-  }, [])
+  }, [TOTAL_SLOTS])
 
   function handleDragOver(e: React.DragEvent) {
     const { types } = e.dataTransfer

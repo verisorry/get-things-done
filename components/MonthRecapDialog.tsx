@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { format } from "date-fns"
-import { CheckCircle2, Circle, Flame, Target, UtensilsCrossed } from "lucide-react"
+import { CheckCircle2, Circle, Target, UtensilsCrossed } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -20,9 +20,7 @@ function timeToMinutes(t: string): number {
 function computeStats(
   tasks: Task[],
   meals: { date: string; meal: string }[],
-  daysInMonth: number,
-  year: number,
-  month: number
+  daysInMonth: number
 ) {
   const totalTasks = tasks.length
   const completedTasks = tasks.filter((t) => t.completed).length
@@ -95,12 +93,16 @@ export function MonthRecapDialog() {
 
   const monthName = format(new Date(data.year, data.month - 1), "MMMM yyyy")
   const newMonthName = format(new Date(), "MMMM")
-  const stats = computeStats(data.tasks, data.meals, data.daysInMonth, data.year, data.month)
+  const stats = computeStats(data.tasks, data.meals, data.daysInMonth)
 
   function toggleGoal(id: string) {
     setCarriedGoals((prev) => {
       const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
       return next
     })
   }
