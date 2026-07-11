@@ -40,6 +40,7 @@ This is a personal productivity tool. If you'd like access to the full app, emai
 
 - **Framework:** [Next.js 15](https://nextjs.org) (App Router)
 - **UI:** [React 18](https://react.dev), [Tailwind CSS v4](https://tailwindcss.com), [shadcn/ui](https://ui.shadcn.com)
+- **State:** [Zustand](https://zustand.docs.pmnd.rs) (persisted global settings)
 - **Database:** [Supabase](https://supabase.com) (Postgres)
 - **Auth:** [Supabase Auth](https://supabase.com/docs/guides/auth) (email/password)
 - **Language:** TypeScript
