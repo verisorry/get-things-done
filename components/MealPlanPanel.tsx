@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/popover"
 import { useWeekMealPlan } from "@/hooks/use-week-meal-plan"
 import { usePantry } from "@/hooks/use-pantry"
+import { useToday } from "@/hooks/use-today"
 import { cn } from "@/lib/utils"
 import type { MealPlan, MealType, PantryCategory, PantryItem } from "@/lib/types"
 
@@ -37,7 +38,7 @@ export function MealPlanPanel() {
   const weekStart = addDays(baseStart, weekOffset * 7)
   const weekEnd = addDays(weekStart, 6)
   const weekStartStr = format(weekStart, "yyyy-MM-dd")
-  const todayStr = format(new Date(), "yyyy-MM-dd")
+  const todayStr = useToday()
 
   const { getMeal, upsertMeal, deleteMeal, swapMeals } = useWeekMealPlan(weekStartStr)
   const {

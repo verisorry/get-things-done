@@ -2,12 +2,14 @@
 
 import { format, parseISO } from "date-fns"
 import { useRouter } from "next/navigation"
+import { useState } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { useDemoContext } from "@/lib/demo-context"
 import { Badge } from "@/components/ui/badge"
-import { LogIn, LogOut } from "lucide-react"
+import { LogIn, LogOut, Settings } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import { SettingsDialog } from "@/components/SettingsDialog"
 
 interface TopBarProps {
   currentDate: string
@@ -18,6 +20,7 @@ export function TopBar({ currentDate, onTodayClick }: TopBarProps) {
   const date = parseISO(currentDate)
   const demo = useDemoContext()
   const router = useRouter()
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   async function handleSignOut() {
     await createClient().auth.signOut()
@@ -47,27 +50,40 @@ export function TopBar({ currentDate, onTodayClick }: TopBarProps) {
         )}
       </div>
 
-      {demo ? (
+      <div className="flex items-center gap-1">
         <Button
           variant="ghost"
-          size="sm"
-          onClick={() => router.push("/auth/login")}
-          className="gap-1.5 text-xs text-muted-foreground"
+          size="icon-sm"
+          onClick={() => setSettingsOpen(true)}
+          className="text-muted-foreground"
         >
-          <LogIn className="size-3.5" />
-          Sign in
+          <Settings className="size-3.5" />
         </Button>
-      ) : (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleSignOut}
-          className="gap-1.5 text-xs text-muted-foreground"
-        >
-          <LogOut className="size-3.5" />
-          Sign out
-        </Button>
-      )}
+
+        {demo ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push("/auth/login")}
+            className="gap-1.5 text-xs text-muted-foreground"
+          >
+            <LogIn className="size-3.5" />
+            Sign in
+          </Button>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleSignOut}
+            className="gap-1.5 text-xs text-muted-foreground"
+          >
+            <LogOut className="size-3.5" />
+            Sign out
+          </Button>
+        )}
+      </div>
+
+      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
     </header>
   )
 }

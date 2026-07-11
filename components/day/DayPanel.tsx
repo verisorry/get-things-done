@@ -8,6 +8,8 @@ import { MealPreview } from "@/components/day/MealPreview"
 import { useDay } from "@/hooks/use-day"
 import { useMealPlan } from "@/hooks/use-meal-plan"
 import { useMonthlyGoals } from "@/hooks/use-monthly-goals"
+import { useToday } from "@/hooks/use-today"
+import { useDaySettings } from "@/lib/settings-context"
 import { cn } from "@/lib/utils"
 
 interface DayPanelProps {
@@ -25,8 +27,10 @@ export function DayPanel({
   const { lunch, dinner, upsertMeal } = useMealPlan(date)
   const parsed = parseISO(date)
   const { goals, toggleDate } = useMonthlyGoals(getYear(parsed), getMonth(parsed) + 1)
+  const { settings } = useDaySettings()
+  const today = useToday()
 
-  const isPastDay = date < format(new Date(), "yyyy-MM-dd")
+  const isPastDay = date < today
   const regularTasks = tasks.filter((t) => !t.source)
   const completedGoals = goals.filter((g) => g.completed_dates.includes(date)).length
   const total = regularTasks.length + goals.length
@@ -101,6 +105,8 @@ export function DayPanel({
         <TimeGrid
           tasks={tasks}
           isToday={isToday}
+          startHour={settings.dayStartHour}
+          endHour={settings.dayEndHour}
           onDropTask={(taskId, timeStart, timeEnd) =>
             updateTask(taskId, { time_start: timeStart, time_end: timeEnd })
           }

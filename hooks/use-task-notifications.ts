@@ -4,10 +4,12 @@ import { useEffect, useRef } from "react"
 import { format } from "date-fns"
 import { createClient } from "@/lib/supabase/client"
 import { useDemoContext } from "@/lib/demo-context"
+import { useToday } from "@/hooks/use-today"
 import type { Task } from "@/lib/types"
 
 export function useTaskNotifications() {
   const demo = useDemoContext()
+  const today = useToday()
   const firedRef = useRef<Set<string>>(new Set())
   const tasksRef = useRef<Task[]>([])
 
@@ -21,8 +23,6 @@ export function useTaskNotifications() {
 
   // Load today's timed tasks and keep them fresh
   useEffect(() => {
-    const today = format(new Date(), "yyyy-MM-dd")
-
     if (demo) {
       tasksRef.current = demo.state.tasks.filter(
         (t) => t.date === today && t.time_start !== null && !t.completed
@@ -48,7 +48,7 @@ export function useTaskNotifications() {
     // Refresh every 5 minutes in case tasks were added
     const refresh = setInterval(load, 5 * 60 * 1000)
     return () => clearInterval(refresh)
-  }, [demo])
+  }, [demo, today])
 
   // Check every 30 seconds whether a task is starting right now
   useEffect(() => {

@@ -9,17 +9,8 @@ function setCursor(cursor: string) {
 import { cn } from "@/lib/utils"
 import type { Task, TaskTier } from "@/lib/types"
 
-export const START_HOUR = 0
-export const END_HOUR = 24
 const SLOT_HEIGHT = 28
 const DEFAULT_DURATION_SLOTS = 2
-
-const HOURS = Array.from(
-  { length: END_HOUR - START_HOUR },
-  (_, i) => START_HOUR + i
-)
-
-const TOTAL_SLOTS = HOURS.length * 2
 
 const TIER_BLOCK: Record<TaskTier, string> = {
   focus: "bg-tier-focus-block text-white",
@@ -29,10 +20,11 @@ const TIER_BLOCK: Record<TaskTier, string> = {
 }
 
 function formatHour(hour: number) {
-  if (hour === 0) return "12 AM"
-  if (hour < 12) return `${hour} AM`
-  if (hour === 12) return "12 PM"
-  return `${hour - 12} PM`
+  const h = ((hour % 24) + 24) % 24
+  if (h === 0) return "12 AM"
+  if (h < 12) return `${h} AM`
+  if (h === 12) return "12 PM"
+  return `${h - 12} PM`
 }
 
 function formatTime(time: string) {
@@ -46,8 +38,13 @@ function timeToMinutes(time: string): number {
   return h * 60 + m
 }
 
-function slotToTime(slot: number): string {
-  const mins = START_HOUR * 60 + slot * 30
+// Minutes elapsed since the day's start hour, wrapping times before it into the next 24h span.
+function minutesFromDayStart(mins: number, startHour: number): number {
+  return (((mins - startHour * 60) % 1440) + 1440) % 1440
+}
+
+function slotToTime(slot: number, startHour: number): string {
+  const mins = (startHour * 60 + slot * 30) % 1440
   const h = Math.floor(mins / 60)
   const m = mins % 60
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00`
@@ -56,6 +53,8 @@ function slotToTime(slot: number): string {
 interface TimeGridProps {
   tasks: Task[]
   isToday: boolean
+  startHour?: number
+  endHour?: number
   onDropTask: (taskId: string, timeStart: string, timeEnd: string) => void
   onDropGoal?: (goalId: string, goalTitle: string, timeStart: string, timeEnd: string) => void
   onDropMeal?: (mealTitle: string, timeStart: string, timeEnd: string, mealType: string) => void
@@ -65,6 +64,8 @@ interface TimeGridProps {
 export function TimeGrid({
   tasks,
   isToday,
+  startHour: START_HOUR = 0,
+  endHour: END_HOUR = 24,
   onDropTask,
   onDropGoal,
   onDropMeal,
@@ -72,6 +73,13 @@ export function TimeGrid({
 }: TimeGridProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const gridRef = useRef<HTMLDivElement>(null)
+
+  const HOURS = Array.from(
+    { length: END_HOUR - START_HOUR },
+    (_, i) => START_HOUR + i
+  )
+
+  const TOTAL_SLOTS = HOURS.length * 2
 
   useEffect(() => {
     if (containerRef.current) {
@@ -136,8 +144,8 @@ export function TimeGrid({
     e.preventDefault()
     const slot = getSlotFromEvent(e)
     if (slot === null) { setDragSlot(null); return }
-    const timeStart = slotToTime(slot)
-    const timeEnd = slotToTime(slot + DEFAULT_DURATION_SLOTS)
+    const timeStart = slotToTime(slot, START_HOUR)
+    const timeEnd = slotToTime(slot + DEFAULT_DURATION_SLOTS, START_HOUR)
 
     const taskId = e.dataTransfer.getData("application/task-id")
     if (taskId) {
@@ -203,8 +211,8 @@ export function TimeGrid({
       if (resizeRef.current) {
         onDropTask(
           resizeRef.current.taskId,
-          slotToTime(resizeRef.current.startSlot),
-          slotToTime(resizeEndRef.current)
+          slotToTime(resizeRef.current.startSlot, START_HOUR),
+          slotToTime(resizeEndRef.current, START_HOUR)
         )
       }
       resizeRef.current = null
@@ -261,8 +269,8 @@ export function TimeGrid({
         const s = moveSlotRef.current
         onDropTask(
           moveRef.current.taskId,
-          slotToTime(s),
-          slotToTime(s + moveRef.current.duration)
+          slotToTime(s, START_HOUR),
+          slotToTime(s + moveRef.current.duration, START_HOUR)
         )
       }
       moveRef.current = null
@@ -308,8 +316,8 @@ export function TimeGrid({
         {timeBlocked.map((task) => {
           const startMins = timeToMinutes(task.time_start!)
           const endMins = timeToMinutes(task.time_end!)
-          const startSlot = (startMins - START_HOUR * 60) / 30
-          const endSlot = (endMins - START_HOUR * 60) / 30
+          const startSlot = minutesFromDayStart(startMins, START_HOUR) / 30
+          const endSlot = minutesFromDayStart(endMins, START_HOUR) / 30
           const duration = endSlot - startSlot
 
           const isResizingThis = resizing?.taskId === task.id
@@ -387,28 +395,28 @@ export function TimeGrid({
           />
         )}
 
-        {isToday && <CurrentTimeLine />}
+        {isToday && <CurrentTimeLine startHour={START_HOUR} endHour={END_HOUR} />}
       </div>
     </div>
   )
 }
 
-function CurrentTimeLine() {
+function CurrentTimeLine({ startHour, endHour }: { startHour: number; endHour: number }) {
   const [top, setTop] = useState<number | null>(null)
 
   useEffect(() => {
     function calc() {
       const now = new Date()
       const mins = now.getHours() * 60 + now.getMinutes()
-      const start = START_HOUR * 60
-      const end = END_HOUR * 60
-      if (mins < start || mins > end) return setTop(null)
-      setTop(((mins - start) / 30) * SLOT_HEIGHT)
+      const relative = minutesFromDayStart(mins, startHour)
+      const span = (endHour - startHour) * 60
+      if (relative > span) return setTop(null)
+      setTop((relative / 30) * SLOT_HEIGHT)
     }
     calc()
     const id = setInterval(calc, 60_000)
     return () => clearInterval(id)
-  }, [])
+  }, [startHour, endHour])
 
   if (top === null) return null
 

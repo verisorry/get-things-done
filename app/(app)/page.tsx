@@ -7,10 +7,11 @@ import {
   useRef,
   useState,
 } from "react"
-import { addDays, format, isToday, subDays } from "date-fns"
+import { addDays, format, parseISO, subDays } from "date-fns"
 import { TopBar } from "@/components/TopBar"
 import { DayPanel } from "@/components/day/DayPanel"
 import { useTaskNotifications } from "@/hooks/use-task-notifications"
+import { useToday } from "@/hooks/use-today"
 
 const BUFFER = 7
 
@@ -24,12 +25,11 @@ function makeDates(center: Date, back: number, forward: number) {
 export default function Home() {
   useTaskNotifications()
 
+  const todayStr = useToday()
   const [dates, setDates] = useState(() =>
-    makeDates(new Date(), BUFFER, BUFFER)
+    makeDates(parseISO(todayStr), BUFFER, BUFFER)
   )
-  const [currentDate, setCurrentDate] = useState(() =>
-    format(new Date(), "yyyy-MM-dd")
-  )
+  const [currentDate, setCurrentDate] = useState(() => todayStr)
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const todayRef = useRef<HTMLDivElement>(null)
@@ -127,7 +127,7 @@ export default function Home() {
 
         {dates.map((date) => {
           const key = format(date, "yyyy-MM-dd")
-          const isTodayDate = isToday(date)
+          const isTodayDate = key === todayStr
           return (
             <DayPanel
               key={key}

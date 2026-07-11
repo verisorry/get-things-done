@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { format, addDays } from "date-fns"
+import { addDays, format, parseISO } from "date-fns"
 import { CalendarDays, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -12,6 +12,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { useInbox } from "@/hooks/use-inbox"
+import { useToday } from "@/hooks/use-today"
 import { cn } from "@/lib/utils"
 import type { InboxItem } from "@/lib/types"
 
@@ -306,8 +307,8 @@ function InboxRow({
   onRowDrop: (e: React.DragEvent) => void
 }) {
   const [open, setOpen] = useState(false)
-  const today = format(new Date(), "yyyy-MM-dd")
-  const tomorrow = format(addDays(new Date(), 1), "yyyy-MM-dd")
+  const today = useToday()
+  const tomorrow = format(addDays(parseISO(today), 1), "yyyy-MM-dd")
 
   function delegate(date: string) {
     onDelegate(item.id, date)

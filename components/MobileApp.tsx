@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { format, addDays, startOfWeek, getMonth, getYear } from "date-fns"
+import { format, addDays, startOfWeek, parseISO, getMonth, getYear } from "date-fns"
 import Image from "next/image"
-import { CheckSquare, ChevronLeft, ChevronRight, LogOut, Target, Trash2, UtensilsCrossed } from "lucide-react"
+import { CheckSquare, ChevronLeft, ChevronRight, LogOut, Settings, Target, Trash2, UtensilsCrossed } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -20,13 +20,12 @@ import { useDay } from "@/hooks/use-day"
 import { useMealPlan } from "@/hooks/use-meal-plan"
 import { useWeekMealPlan } from "@/hooks/use-week-meal-plan"
 import { useMonthlyGoals } from "@/hooks/use-monthly-goals"
+import { useToday } from "@/hooks/use-today"
 import { useDemoContext } from "@/lib/demo-context"
 import { createClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
+import { SettingsDialog } from "@/components/SettingsDialog"
 import type { Task, TaskTier, MonthlyGoal, MealType } from "@/lib/types"
-
-const today = new Date()
-const todayStr = format(today, "yyyy-MM-dd")
 
 function formatMobileTime(time: string) {
   const [h, m] = time.split(":").map(Number)
@@ -52,6 +51,7 @@ const TIER_CHECKBOX: Record<TaskTier, string> = {
 
 export function MobileApp() {
   const [tab, setTab] = useState<"tasks" | "meals">("tasks")
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const demo = useDemoContext()
   const router = useRouter()
 
@@ -66,14 +66,24 @@ export function MobileApp() {
         {tab === "tasks" ? <TasksTab /> : <MealsTab />}
       </div>
 
-      {!demo && (
+      <div className="fixed top-[max(0.75rem,env(safe-area-inset-top))] right-4 z-50 flex items-center gap-1">
         <button
-          onClick={handleSignOut}
-          className="fixed top-[max(0.75rem,env(safe-area-inset-top))] right-4 z-50 flex size-8 items-center justify-center rounded-full text-muted-foreground/50 transition-colors hover:text-muted-foreground"
+          onClick={() => setSettingsOpen(true)}
+          className="flex size-8 items-center justify-center rounded-full text-muted-foreground/50 transition-colors hover:text-muted-foreground"
         >
-          <LogOut className="size-4" />
+          <Settings className="size-4" />
         </button>
-      )}
+        {!demo && (
+          <button
+            onClick={handleSignOut}
+            className="flex size-8 items-center justify-center rounded-full text-muted-foreground/50 transition-colors hover:text-muted-foreground"
+          >
+            <LogOut className="size-4" />
+          </button>
+        )}
+      </div>
+
+      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
 
       <div className="pointer-events-none fixed right-0 bottom-[max(2rem,env(safe-area-inset-bottom))] left-0 z-50 flex justify-center">
         <Tabs value={tab} onValueChange={(v) => setTab(v as "tasks" | "meals")} className="pointer-events-auto">
@@ -94,6 +104,8 @@ export function MobileApp() {
 }
 
 function TasksTab() {
+  const todayStr = useToday()
+  const today = parseISO(todayStr)
   const { tasks, addTask, updateTask, deleteTask } = useDay(todayStr)
   const { goals, toggleDate } = useMonthlyGoals(getYear(today), getMonth(today) + 1)
   const { lunch, dinner, upsertMeal } = useMealPlan(todayStr)
@@ -365,6 +377,8 @@ function MobileGoalRow({
 }
 
 function MealsTab() {
+  const todayStr = useToday()
+  const today = parseISO(todayStr)
   const [weekOffset, setWeekOffset] = useState(0)
   const baseStart = startOfWeek(today, { weekStartsOn: 1 })
   const weekStart = addDays(baseStart, weekOffset * 7)
