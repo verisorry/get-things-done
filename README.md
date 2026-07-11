@@ -14,7 +14,7 @@ This is a personal productivity tool. If you'd like access to the full app, emai
 
 ## Features
 
-**Daily View** — An infinite horizontal scroll canvas showing day panels. Each day has a task list on the left and a time grid on the right. Scroll to navigate between days. Today auto-centers on load.
+**Daily View** — An infinite horizontal scroll canvas showing day panels. Each day has a task list on the left and a time grid on the right. Scroll to navigate between days. Today auto-centres on load.
 
 **Four-Tier Task Hierarchy**
 - **Focus** — What will make today a win
@@ -29,6 +29,8 @@ This is a personal productivity tool. If you'd like access to the full app, emai
 **Monthly Goals** — Track recurring goals with a day-by-day completion grid. Set optional target counts. Navigate between months. Lives in the collapsible left sidebar.
 
 **Meal Planning** — Lunch and dinner chips at the bottom of each day panel. A weekly meal grid in the sidebar for grocery planning. Click any cell to edit via popover.
+
+**Day Settings** — Customise when your day starts and ends from the gear icon in the top bar (desktop) or mobile header. The time grid renders exactly that window, and "today" itself rolls over at your chosen start hour instead of midnight — handy for night owls, so tasks added after midnight still land on the day before. Applies instantly, everywhere, and persists across sessions.
 
 **Dark Mode** — Defaults to system preference. Toggle with the sun/moon icon at the bottom of the left sidebar. Dark mode uses a frosted glass aesthetic.
 
@@ -106,7 +108,7 @@ app/
   layout.tsx          # Root layout — theme + demo wrapper
   (app)/
     layout.tsx        # App shell — sidebar + inbox + day canvas
-    page.tsx          # Infinite scroll day canvas with virtualization
+    page.tsx          # Infinite scroll day canvas with virtualisation
   (auth)/
     auth/login/       # Login page
     auth/callback/    # OAuth callback handler
@@ -122,7 +124,8 @@ components/
   GoalsSidebar.tsx    # Left icon rail + expandable goals/meals panels
   InboxPanel.tsx      # Resizable inbox with tag sections and delegation
   MealPlanPanel.tsx   # Weekly meal grid for the sidebar
-  TopBar.tsx          # Date display, Today button, demo badge
+  TopBar.tsx          # Date display, Today button, settings + demo badge
+  SettingsDialog.tsx  # Day start/end hour pickers, applied globally
   DemoWrapper.tsx     # Wraps app in DemoProvider when ?demo=true
   ThemeProvider.tsx   # Dark mode context with localStorage persistence
 
@@ -132,11 +135,13 @@ hooks/
   use-meal-plan.ts    # Single-day meal plan
   use-week-meal-plan.ts # Week-range meal plan
   use-monthly-goals.ts  # Monthly goals with completion tracking
+  use-today.ts        # Rollover-aware "today" string, recomputed each minute
 
 lib/
   types.ts            # Shared TypeScript interfaces
   demo-context.tsx    # Demo mode context provider + in-memory state
   demo-data.ts        # Sample seed data for demo mode
+  settings-context.tsx # Day start/end hour settings, persisted to localStorage
   supabase/           # Supabase client (browser + server + middleware)
 ```
 
