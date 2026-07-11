@@ -2,9 +2,13 @@
 
 A personal productivity web app that digitises a physical "get things done" planner. Day-by-day task planning with time blocking, a four-tier task hierarchy, monthly goals, meal planning, and a flexible inbox.
 
+## Live App
+
+**[get-things-done-blond.vercel.app](https://get-things-done-blond.vercel.app/)**
+
 ## Demo
 
-Try the app in demo mode with sample data — no account needed.
+Try the app in demo mode with sample data — no account needed: **[get-things-done-blond.vercel.app/?demo=true](https://get-things-done-blond.vercel.app/?demo=true)**
 
 This is a personal productivity tool. If you'd like access to the full app, email me at **fang.silvia2026@gmail.com**.
 
