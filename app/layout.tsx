@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { DemoWrapper } from "@/components/DemoWrapper";
+import { DevErrorOverlay } from "@/components/DevErrorOverlay";
 import { DaySettingsProvider } from "@/lib/settings-context";
 import "./globals.css";
 
@@ -40,6 +41,7 @@ export default function RootLayout({
             </Suspense>
           </DaySettingsProvider>
         </ThemeProvider>
+        <DevErrorOverlay />
       </body>
     </html>
   );
