@@ -154,17 +154,16 @@ export function useWeekMealPlan(weekStartDate: string) {
       })
 
       const supabase = createClient()
-      // Move source to target slot
-      const moveTo = await supabase.from("meal_plan").update({ date: toDate, meal: toMeal }).eq("id", from.id)
-      if (moveTo.error) console.error("Failed to swap meal:", moveTo.error)
-      // If there was a meal at the target, move it back to the source slot
-      if (to) {
-        const moveFrom = await supabase.from("meal_plan").update({ date: fromDate, meal: fromMeal }).eq("id", to.id)
-        if (moveFrom.error) console.error("Failed to swap meal:", moveFrom.error)
-      }
-      if (!moveTo.error) {
-        window.dispatchEvent(new CustomEvent("meal-changed", { detail: { dates: [fromDate, toDate] } }))
-      }
+      const { error } = await supabase.rpc("swap_meal_plan_slots", {
+        p_from_id: from.id,
+        p_to_id: to?.id ?? null,
+        p_from_date: fromDate,
+        p_from_meal: fromMeal,
+        p_to_date: toDate,
+        p_to_meal: toMeal,
+      })
+      if (error) console.error("Failed to swap meal:", error)
+      else window.dispatchEvent(new CustomEvent("meal-changed", { detail: { dates: [fromDate, toDate] } }))
     },
     [demo, meals]
   )
