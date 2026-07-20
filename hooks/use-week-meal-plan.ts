@@ -52,13 +52,10 @@ export function useWeekMealPlan(weekStartDate: string) {
         return
       }
 
-      let existingId: string | undefined
-
       setMeals((prev) => {
         const existing = prev.find(
           (m) => m.date === date && m.meal === meal
         )
-        existingId = existing?.id
         const record: MealPlan = existing
           ? { ...existing, title, notes }
           : {
@@ -76,16 +73,22 @@ export function useWeekMealPlan(weekStartDate: string) {
       })
 
       const supabase = createClient()
-      const { error } = existingId
-        ? await supabase
-            .from("meal_plan")
-            .update({ title, notes })
-            .eq("id", existingId)
-        : await supabase
-            .from("meal_plan")
-            .insert({ date, meal, title, notes })
-      if (error) console.error("Failed to save meal:", error)
-      else window.dispatchEvent(new CustomEvent("meal-changed", { detail: { date } }))
+      const { data, error } = await supabase
+        .from("meal_plan")
+        .upsert({ date, meal, title, notes }, { onConflict: "date,meal" })
+        .select()
+        .single()
+      if (error) {
+        console.error("Failed to save meal:", error)
+      } else {
+        if (data) {
+          setMeals((prev) => [
+            ...prev.filter((m) => !(m.date === date && m.meal === meal)),
+            data as MealPlan,
+          ])
+        }
+        window.dispatchEvent(new CustomEvent("meal-changed", { detail: { date } }))
+      }
     },
     [demo]
   )
