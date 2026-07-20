@@ -73,11 +73,25 @@ export function useWeekMealPlan(weekStartDate: string) {
       })
 
       const supabase = createClient()
-      const { data, error } = await supabase
+      const { data: existingRow } = await supabase
         .from("meal_plan")
-        .upsert({ date, meal, title, notes }, { onConflict: "date,meal" })
-        .select()
-        .single()
+        .select("id")
+        .eq("date", date)
+        .eq("meal", meal)
+        .maybeSingle()
+
+      const { data, error } = existingRow
+        ? await supabase
+            .from("meal_plan")
+            .update({ title, notes })
+            .eq("id", existingRow.id)
+            .select()
+            .single()
+        : await supabase
+            .from("meal_plan")
+            .insert({ date, meal, title, notes })
+            .select()
+            .single()
       if (error) {
         console.error("Failed to save meal:", error)
       } else {
