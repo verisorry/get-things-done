@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { format, getDaysInMonth } from "date-fns"
+import { AnimatePresence, motion } from "motion/react"
 import Image from "next/image"
 import {
   ChevronLeft,
@@ -257,18 +258,20 @@ export function GoalsSidebar() {
                   </p>
                 ) : (
                   <div className="flex flex-col gap-2.5">
-                    {goals.map((goal) => (
-                      <GoalCard
-                        key={goal.id}
-                        goal={goal}
-                        year={year}
-                        month={month}
-                        daysInMonth={daysInMonth}
-                        todayStr={todayStr}
-                        onToggle={toggleDate}
-                        onDelete={deleteGoal}
-                      />
-                    ))}
+                    <AnimatePresence mode="popLayout" initial={false}>
+                      {goals.map((goal) => (
+                        <GoalCard
+                          key={goal.id}
+                          goal={goal}
+                          year={year}
+                          month={month}
+                          daysInMonth={daysInMonth}
+                          todayStr={todayStr}
+                          onToggle={toggleDate}
+                          onDelete={deleteGoal}
+                        />
+                      ))}
+                    </AnimatePresence>
                   </div>
                 )}
 
@@ -369,7 +372,13 @@ function GoalCard({
     : null
 
   return (
-    <div className="group rounded-[12px] bg-card p-2.5 shadow-sm dark:border dark:border-white/[0.06] dark:bg-white/[0.04] dark:shadow-none">
+    <motion.div
+      layout="position"
+      initial={{ opacity: 0, y: -4 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0 }}
+      transition={{ type: "spring", bounce: 0, duration: 0.35 }}
+      className="group rounded-[12px] bg-card p-2.5 shadow-sm dark:border dark:border-white/[0.06] dark:bg-white/[0.04] dark:shadow-none">
       <div className="mb-1 flex items-start justify-between">
         <h3 className="pr-4 text-xs font-semibold leading-tight">
           {goal.title}
@@ -426,6 +435,6 @@ function GoalCard({
           )
         })}
       </div>
-    </div>
+    </motion.div>
   )
 }

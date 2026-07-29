@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { addDays, format, parseISO } from "date-fns"
+import { AnimatePresence, motion } from "motion/react"
 import { CalendarDays, PanelLeftClose, Inbox as InboxIcon, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -328,18 +329,20 @@ function InboxSection({
         </Badge>
       </div>
       <div className="flex flex-col px-2 pb-2">
-        {items.map((item) => (
-          <InboxRow
-            key={item.id}
-            item={item}
-            onDelegate={onDelegate}
-            onDelete={onDelete}
-            dropIndicator={dragOverItem?.id === item.id ? dragOverItem.position : null}
-            onRowDragOver={(e) => handleRowDragOver(e, item)}
-            onRowDragLeave={handleRowDragLeave}
-            onRowDrop={(e) => handleRowDrop(e, item)}
-          />
-        ))}
+        <AnimatePresence mode="popLayout" initial={false}>
+          {items.map((item) => (
+            <InboxRow
+              key={item.id}
+              item={item}
+              onDelegate={onDelegate}
+              onDelete={onDelete}
+              dropIndicator={dragOverItem?.id === item.id ? dragOverItem.position : null}
+              onRowDragOver={(e) => handleRowDragOver(e, item)}
+              onRowDragLeave={handleRowDragLeave}
+              onRowDrop={(e) => handleRowDrop(e, item)}
+            />
+          ))}
+        </AnimatePresence>
       </div>
     </section>
   )
@@ -372,9 +375,16 @@ function InboxRow({
   }
 
   return (
-    <div
+    <motion.div
+      layout="position"
+      initial={{ opacity: 0, y: -4 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0 }}
+      transition={{ type: "spring", bounce: 0, duration: 0.35 }}
       draggable
-      onDragStart={(e) => {
+      // motion.div reserves onDragStart for its own pan-gesture API; the
+      // capture-phase variant is untouched and behaves the same here.
+      onDragStartCapture={(e) => {
         e.dataTransfer.setData("application/inbox-id", item.id)
         e.dataTransfer.setData("application/inbox-title", item.title)
         e.dataTransfer.effectAllowed = "move"
@@ -434,6 +444,6 @@ function InboxRow({
           <Trash2 className="size-3.5 text-muted-foreground" />
         </Button>
       </div>
-    </div>
+    </motion.div>
   )
 }

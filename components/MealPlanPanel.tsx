@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect, useRef, useState } from "react"
 import { addDays, format, startOfWeek } from "date-fns"
+import { AnimatePresence, motion } from "motion/react"
 import { ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -314,44 +315,54 @@ function PantryCategorySection({
             No items
           </span>
         )}
-        {items.map((item) => (
-          <div
-            key={item.id}
-            draggable
-            onDragStart={(e) => {
-              e.dataTransfer.setData("application/pantry-id", item.id)
-              e.dataTransfer.effectAllowed = "move"
-            }}
-            onDragOver={(e) => handleRowDragOver(e, item)}
-            onDragLeave={handleRowDragLeave}
-            onDrop={(e) => handleRowDrop(e, item)}
-            className={cn(
-              "group flex cursor-grab items-center gap-1.5 rounded border-t-2 border-b-2 border-transparent px-1 py-0.5 hover:bg-secondary/50 active:cursor-grabbing",
-              dragOverItem?.id === item.id && dragOverItem.position === "before" && "border-t-[#007aff]",
-              dragOverItem?.id === item.id && dragOverItem.position === "after" && "border-b-[#007aff]"
-            )}
-          >
-            <Checkbox
-              checked={item.checked}
-              onCheckedChange={() => onToggle(item.id)}
-              className="size-3.5"
-            />
-            <span
+        <AnimatePresence mode="popLayout" initial={false}>
+          {items.map((item) => (
+            <motion.div
+              key={item.id}
+              layout="position"
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ type: "spring", bounce: 0, duration: 0.35 }}
+              draggable
+              // motion.div reserves onDragStart for its own pan-gesture API;
+              // the capture-phase variant is untouched and behaves the same
+              // here since there's no nested draggable descendant.
+              onDragStartCapture={(e) => {
+                e.dataTransfer.setData("application/pantry-id", item.id)
+                e.dataTransfer.effectAllowed = "move"
+              }}
+              onDragOver={(e) => handleRowDragOver(e, item)}
+              onDragLeave={handleRowDragLeave}
+              onDrop={(e) => handleRowDrop(e, item)}
               className={cn(
-                "flex-1 truncate text-[11px]",
-                item.checked && "text-muted-foreground/50 line-through"
+                "group flex cursor-grab items-center gap-1.5 rounded border-t-2 border-b-2 border-transparent px-1 py-0.5 hover:bg-secondary/50 active:cursor-grabbing",
+                dragOverItem?.id === item.id && dragOverItem.position === "before" && "border-t-[#007aff]",
+                dragOverItem?.id === item.id && dragOverItem.position === "after" && "border-b-[#007aff]"
               )}
             >
-              {item.title}
-            </span>
-            <button
-              onClick={() => onDelete(item.id)}
-              className="opacity-0 transition-opacity group-hover:opacity-100"
-            >
-              <Trash2 className="size-3 text-muted-foreground" />
-            </button>
-          </div>
-        ))}
+              <Checkbox
+                checked={item.checked}
+                onCheckedChange={() => onToggle(item.id)}
+                className="size-3.5"
+              />
+              <span
+                className={cn(
+                  "flex-1 truncate text-[11px]",
+                  item.checked && "text-muted-foreground/50 line-through"
+                )}
+              >
+                {item.title}
+              </span>
+              <button
+                onClick={() => onDelete(item.id)}
+                className="opacity-0 transition-opacity group-hover:opacity-100"
+              >
+                <Trash2 className="size-3 text-muted-foreground" />
+              </button>
+            </motion.div>
+          ))}
+        </AnimatePresence>
         {adding && (
           <div className="flex items-center gap-1.5 px-1 py-0.5">
             <div className="size-3.5 shrink-0 rounded-full border border-border" />
