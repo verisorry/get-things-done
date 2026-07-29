@@ -147,10 +147,18 @@ export function TimeGrid({
   const TOTAL_SLOTS = HOURS.length * 2
 
   useEffect(() => {
-    if (containerRef.current) {
-      containerRef.current.scrollTop = 9 * 2 * SLOT_HEIGHT
+    const container = containerRef.current
+    if (!container) return
+    if (isToday) {
+      const now = new Date()
+      const mins = now.getHours() * 60 + now.getMinutes()
+      const relative = minutesFromDayStart(mins, START_HOUR)
+      const nowOffset = (relative / 30) * SLOT_HEIGHT
+      container.scrollTop = Math.max(0, nowOffset - container.clientHeight / 2)
+    } else {
+      container.scrollTop = 9 * 2 * SLOT_HEIGHT
     }
-  }, [])
+  }, [isToday, START_HOUR])
   const [dragSlot, setDragSlot] = useState<number | null>(null)
 
   const [resizing, setResizing] = useState<{
