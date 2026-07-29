@@ -214,7 +214,11 @@ export function TimeGrid({
   function startSettle(taskId: string, dim: "top" | "height", from: number, to: number) {
     if (settleAnimRef.current) cancelAnimationFrame(settleAnimRef.current.raf)
 
-    if (Math.abs(from - to) < 0.5) {
+    const reduceMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+
+    if (Math.abs(from - to) < 0.5 || reduceMotion) {
       settleAnimRef.current = null
       setSettle(null)
       return

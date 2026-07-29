@@ -392,7 +392,7 @@ function GoalCard({
         {progress !== null && (
           <div className="h-1 flex-1 rounded-full bg-border">
             <div
-              className="h-full rounded-full bg-foreground transition-all"
+              className="h-full rounded-full bg-foreground transition-[width] duration-300 ease-out"
               style={{ width: `${progress * 100}%` }}
             />
           </div>

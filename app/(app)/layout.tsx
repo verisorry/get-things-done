@@ -1,5 +1,6 @@
 "use client"
 
+import { MotionConfig } from "motion/react"
 import { GoalsSidebar } from "@/components/GoalsSidebar"
 import { InboxPanel } from "@/components/InboxPanel"
 import { MobileApp } from "@/components/MobileApp"
@@ -7,7 +8,10 @@ import { MonthRecapDialog } from "@/components/MonthRecapDialog"
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <>
+    // "user" defers to the OS prefers-reduced-motion setting: every motion.*
+    // animation in the app automatically drops transform/scale and keeps
+    // opacity-only transitions for anyone who has it enabled.
+    <MotionConfig reducedMotion="user">
       <MonthRecapDialog />
 
       {/* Mobile */}
@@ -25,6 +29,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </div>
-    </>
+    </MotionConfig>
   )
 }

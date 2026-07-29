@@ -172,7 +172,7 @@ export function MonthRecapDialog() {
                       <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary">
                         <div
                           className={cn(
-                            "h-full rounded-full transition-all",
+                            "h-full rounded-full transition-[width] duration-300 ease-out",
                             tier === "focus" && "bg-foreground",
                             tier === "important" && "bg-tier-important",
                             tier === "immediate" && "bg-tier-immediate",

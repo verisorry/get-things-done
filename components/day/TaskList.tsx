@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { AnimatePresence } from "motion/react"
 import { GripVertical, Plus, Target, Utensils } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -235,46 +236,54 @@ export function TaskList({
                 </>
               )}
 
-              {active.map((task) => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  onUpdate={onUpdateTask}
-                  onDelete={onDeleteTask}
-                  onSendToInbox={onSendToInbox}
-                  isPastDay={isPastDay}
-                  dropIndicator={dragOverTask?.id === task.id ? dragOverTask.position : null}
-                  onCardDragOver={(e) => handleCardDragOver(e, task)}
-                  onCardDragLeave={handleCardDragLeave}
-                  onCardDrop={(e) => handleCardDrop(e, task, key, active)}
-                />
-              ))}
-
-              {addingTier === key && (
-                <div className="flex items-center gap-2.5 px-3 py-2.5">
-                  <div className="size-4 shrink-0 rounded-full border border-border" />
-                  <input
-                    ref={inputRef}
-                    value={addTitle}
-                    onChange={(e) => setAddTitle(e.target.value)}
-                    onKeyDown={(e) => handleKeyDown(e, key)}
-                    onBlur={() => handleBlur(key)}
-                    className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                    placeholder="New task..."
+              {/* popLayout pulls a deleted card out of flow immediately so
+                  siblings reflow at once, while the card itself still plays
+                  its exit fade. Completing a task re-sorts it into the
+                  `completed` array below — since its key persists, layout
+                  animation on TaskCard glides it to its new spot instead of
+                  jumping there. */}
+              <AnimatePresence mode="popLayout" initial={false}>
+                {active.map((task) => (
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    onUpdate={onUpdateTask}
+                    onDelete={onDeleteTask}
+                    onSendToInbox={onSendToInbox}
+                    isPastDay={isPastDay}
+                    dropIndicator={dragOverTask?.id === task.id ? dragOverTask.position : null}
+                    onCardDragOver={(e) => handleCardDragOver(e, task)}
+                    onCardDragLeave={handleCardDragLeave}
+                    onCardDrop={(e) => handleCardDrop(e, task, key, active)}
                   />
-                </div>
-              )}
+                ))}
 
-              {completed.map((task) => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  onUpdate={onUpdateTask}
-                  onDelete={onDeleteTask}
-                  onSendToInbox={onSendToInbox}
-                  isPastDay={isPastDay}
-                />
-              ))}
+                {addingTier === key && (
+                  <div key="adding-input" className="flex items-center gap-2.5 px-3 py-2.5">
+                    <div className="size-4 shrink-0 rounded-full border border-border" />
+                    <input
+                      ref={inputRef}
+                      value={addTitle}
+                      onChange={(e) => setAddTitle(e.target.value)}
+                      onKeyDown={(e) => handleKeyDown(e, key)}
+                      onBlur={() => handleBlur(key)}
+                      className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                      placeholder="New task..."
+                    />
+                  </div>
+                )}
+
+                {completed.map((task) => (
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    onUpdate={onUpdateTask}
+                    onDelete={onDeleteTask}
+                    onSendToInbox={onSendToInbox}
+                    isPastDay={isPastDay}
+                  />
+                ))}
+              </AnimatePresence>
             </div>
           </section>
         )
@@ -313,11 +322,11 @@ function GoalRow({
       <button
         onClick={onToggle}
         className={cn(
-          "flex size-4 shrink-0 items-center justify-center rounded-full border border-tier-important transition-[colors,transform] duration-150 active:scale-90",
+          "flex size-4 shrink-0 items-center justify-center rounded-full border border-tier-important transition-[colors,transform] duration-150 motion-safe:active:scale-90",
           done && "border-completed bg-completed"
         )}
       >
-        {done && <span className="text-[8px] text-white animate-in zoom-in-50 duration-150">✓</span>}
+        {done && <span className="text-[8px] text-white motion-safe:animate-in motion-safe:zoom-in-50 motion-safe:duration-150">✓</span>}
       </button>
       <span
         className={cn(

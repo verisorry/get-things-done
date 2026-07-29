@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { motion } from "motion/react"
 import { GripVertical, Inbox, Trash2 } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
@@ -75,15 +76,23 @@ export function TaskCard({
   const hasTime = task.time_start && task.time_end
 
   return (
-    <div
+    <motion.div
+      layout="position"
+      initial={{ opacity: 0, y: -4 }}
+      animate={{ opacity: task.completed ? 0.5 : 1, y: 0 }}
+      exit={{ opacity: 0 }}
+      transition={{ type: "spring", bounce: 0, duration: 0.35 }}
       draggable
-      onDragStart={handleDragStart}
+      // motion.div reserves onDragStart/onDrag/onDragEnd for its own pan
+      // gesture API with an incompatible signature — the capture-phase
+      // variant is untouched by motion and behaves identically here since
+      // there's no nested draggable descendant to differ from bubble phase.
+      onDragStartCapture={handleDragStart}
       onDragOver={onCardDragOver}
       onDragLeave={onCardDragLeave}
       onDrop={onCardDrop}
       className={cn(
         "group flex cursor-grab items-start gap-1.5 border-t-2 border-b-2 border-transparent px-1.5 py-2.5 active:cursor-grabbing",
-        task.completed && "opacity-50",
         dropIndicator === "before" && "border-t-ring",
         dropIndicator === "after" && "border-b-ring"
       )}
@@ -190,6 +199,6 @@ export function TaskCard({
           <Trash2 className="size-3 text-muted-foreground" />
         </Button>
       </div>
-    </div>
+    </motion.div>
   )
 }

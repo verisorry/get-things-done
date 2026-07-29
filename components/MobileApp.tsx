@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { format, addDays, startOfWeek, parseISO, getMonth, getYear } from "date-fns"
 import Image from "next/image"
+import { AnimatePresence, motion } from "motion/react"
 import { CheckSquare, ChevronLeft, ChevronRight, LogOut, Settings, Target, Trash2, UtensilsCrossed } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
@@ -63,7 +64,29 @@ export function MobileApp() {
   return (
     <div className="flex h-full w-full flex-col">
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {tab === "tasks" ? <TasksTab /> : <MealsTab />}
+        <AnimatePresence mode="wait" initial={false}>
+          {tab === "tasks" ? (
+            <motion.div
+              key="tasks"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              <TasksTab />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="meals"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              <MealsTab />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <div className="fixed top-[max(0.75rem,env(safe-area-inset-top))] right-4 z-50 flex items-center gap-1">
@@ -153,7 +176,7 @@ function TasksTab() {
         <p className="text-sm text-muted-foreground">{format(today, "MMMM d")}</p>
         {total > 0 && (
           <div className="mt-2 h-1 overflow-hidden rounded-full bg-secondary">
-            <div className="h-full rounded-full bg-completed transition-all" style={{ width: `${progress * 100}%` }} />
+            <div className="h-full rounded-full bg-completed transition-[width] duration-300 ease-out" style={{ width: `${progress * 100}%` }} />
           </div>
         )}
       </div>
@@ -196,28 +219,30 @@ function TasksTab() {
                   />
                 ))}
 
-                {active.map((task) => (
-                  <MobileTaskRow key={task.id} task={task} onUpdate={updateTask} onDelete={deleteTask} />
-                ))}
+                <AnimatePresence mode="popLayout" initial={false}>
+                  {active.map((task) => (
+                    <MobileTaskRow key={task.id} task={task} onUpdate={updateTask} onDelete={deleteTask} />
+                  ))}
 
-                {addingTier === key && (
-                  <div className="flex items-center gap-3 px-4 py-2.5">
-                    <div className="size-4 shrink-0 rounded-full border border-border" />
-                    <input
-                      ref={inputRef}
-                      value={addTitle}
-                      onChange={(e) => setAddTitle(e.target.value)}
-                      onKeyDown={(e) => handleKeyDown(e, key)}
-                      onBlur={() => handleBlur(key)}
-                      className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                      placeholder="New task..."
-                    />
-                  </div>
-                )}
+                  {addingTier === key && (
+                    <div key="adding-input" className="flex items-center gap-3 px-4 py-2.5">
+                      <div className="size-4 shrink-0 rounded-full border border-border" />
+                      <input
+                        ref={inputRef}
+                        value={addTitle}
+                        onChange={(e) => setAddTitle(e.target.value)}
+                        onKeyDown={(e) => handleKeyDown(e, key)}
+                        onBlur={() => handleBlur(key)}
+                        className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                        placeholder="New task..."
+                      />
+                    </div>
+                  )}
 
-                {done.map((task) => (
-                  <MobileTaskRow key={task.id} task={task} onUpdate={updateTask} onDelete={deleteTask} />
-                ))}
+                  {done.map((task) => (
+                    <MobileTaskRow key={task.id} task={task} onUpdate={updateTask} onDelete={deleteTask} />
+                  ))}
+                </AnimatePresence>
               </div>
             </section>
           )
@@ -319,7 +344,14 @@ function MobileTaskRow({
   onDelete: (id: string) => void
 }) {
   return (
-    <div className={cn("flex items-start gap-3 px-4 py-2.5", task.completed && "opacity-50")}>
+    <motion.div
+      layout="position"
+      initial={{ opacity: 0, y: -4 }}
+      animate={{ opacity: task.completed ? 0.5 : 1, y: 0 }}
+      exit={{ opacity: 0 }}
+      transition={{ type: "spring", bounce: 0, duration: 0.35 }}
+      className="flex items-start gap-3 px-4 py-2.5"
+    >
       <Checkbox
         checked={task.completed}
         onCheckedChange={(checked) => onUpdate(task.id, { completed: checked === true })}
@@ -342,7 +374,7 @@ function MobileTaskRow({
       >
         <Trash2 className="size-3.5" />
       </button>
-    </div>
+    </motion.div>
   )
 }
 
