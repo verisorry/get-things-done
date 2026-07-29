@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { addDays, format, parseISO } from "date-fns"
-import { CalendarDays, Trash2 } from "lucide-react"
+import { CalendarDays, PanelLeftClose, Inbox as InboxIcon, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
@@ -19,6 +19,8 @@ import type { InboxItem } from "@/lib/types"
 const MIN_WIDTH = 220
 const MAX_WIDTH = 500
 const DEFAULT_WIDTH = 320
+const RAIL_WIDTH = 48
+const STORAGE_KEY_COLLAPSED = "inbox-collapsed"
 
 function parseInput(value: string): { title: string; tag: string | null } {
   const match = value.match(/@(\S+)/)
@@ -49,7 +51,24 @@ export function InboxPanel() {
   }, [markDelegated, addItem])
   const [inputValue, setInputValue] = useState("")
   const [width, setWidth] = useState(DEFAULT_WIDTH)
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false
+    return localStorage.getItem(STORAGE_KEY_COLLAPSED) === "1"
+  })
+  const [ready, setReady] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    requestAnimationFrame(() => setReady(true))
+  }, [])
+
+  function toggleCollapsed() {
+    setCollapsed((prev) => {
+      const next = !prev
+      localStorage.setItem(STORAGE_KEY_COLLAPSED, next ? "1" : "0")
+      return next
+    })
+  }
 
   const grouped = useMemo(() => {
     const untagged: InboxItem[] = []
@@ -110,9 +129,37 @@ export function InboxPanel() {
     document.addEventListener("mouseup", onMouseUp)
   }
 
+  if (collapsed) {
+    return (
+      <div
+        className={cn(
+          "relative flex shrink-0 flex-col items-center overflow-hidden rounded-[20px] border border-white/80 bg-white/60 pt-3 shadow-none backdrop-blur-[20px] dark:border-white/[0.06] dark:bg-white/[0.03]",
+          ready && "transition-[width] duration-200 ease-in-out"
+        )}
+        style={{ width: RAIL_WIDTH }}
+      >
+        <button
+          onClick={toggleCollapsed}
+          className="flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+          aria-label="Expand inbox"
+        >
+          <InboxIcon className="size-[18px]" />
+        </button>
+        {items.length > 0 && (
+          <Badge variant="secondary" className="mt-2 text-[10px]">
+            {items.length}
+          </Badge>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div
-      className="relative flex shrink-0 flex-col overflow-hidden rounded-[20px] border border-white/80 bg-white/60 shadow-none backdrop-blur-[20px] dark:border-white/[0.06] dark:bg-white/[0.03]"
+      className={cn(
+        "relative flex shrink-0 flex-col overflow-hidden rounded-[20px] border border-white/80 bg-white/60 shadow-none backdrop-blur-[20px] dark:border-white/[0.06] dark:bg-white/[0.03]",
+        ready && "transition-[width] duration-200 ease-in-out"
+      )}
       style={{ width }}
     >
       <div className="flex h-11 shrink-0 items-center gap-2 px-4">
@@ -122,6 +169,15 @@ export function InboxPanel() {
             {items.length}
           </Badge>
         )}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggleCollapsed}
+          className="ml-auto size-6 text-muted-foreground hover:text-foreground"
+          aria-label="Collapse inbox"
+        >
+          <PanelLeftClose className="size-3.5" />
+        </Button>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-3">
