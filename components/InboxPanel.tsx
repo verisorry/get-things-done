@@ -134,7 +134,7 @@ export function InboxPanel() {
     return (
       <div
         className={cn(
-          "relative flex shrink-0 flex-col items-center overflow-hidden rounded-[20px] border border-white/80 bg-white/60 pt-3 shadow-none backdrop-blur-[20px] dark:border-white/[0.06] dark:bg-white/[0.03]",
+          "relative flex shrink-0 flex-col items-center overflow-hidden rounded-[20px] border border-white/80 bg-white/60 pt-3 shadow-none backdrop-blur-[20px] reduced-transparency:bg-white reduced-transparency:backdrop-blur-none contrast-more:border-2 contrast-more:border-foreground/40 contrast-more:bg-white contrast-more:backdrop-blur-none dark:border-white/[0.06] dark:bg-white/[0.03] reduced-transparency:dark:bg-[#1a1a1f] dark:contrast-more:bg-[#1a1a1f]",
           ready && "transition-[width] duration-200 ease-in-out"
         )}
         style={{ width: RAIL_WIDTH }}
@@ -158,7 +158,7 @@ export function InboxPanel() {
   return (
     <div
       className={cn(
-        "relative flex shrink-0 flex-col overflow-hidden rounded-[20px] border border-white/80 bg-white/60 shadow-none backdrop-blur-[20px] dark:border-white/[0.06] dark:bg-white/[0.03]",
+        "relative flex shrink-0 flex-col overflow-hidden rounded-[20px] border border-white/80 bg-white/60 shadow-none backdrop-blur-[20px] reduced-transparency:bg-white reduced-transparency:backdrop-blur-none contrast-more:border-2 contrast-more:border-foreground/40 contrast-more:bg-white contrast-more:backdrop-blur-none dark:border-white/[0.06] dark:bg-white/[0.03] reduced-transparency:dark:bg-[#1a1a1f] dark:contrast-more:bg-[#1a1a1f]",
         ready && "transition-[width] duration-200 ease-in-out"
       )}
       style={{ width }}

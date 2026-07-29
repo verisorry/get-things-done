@@ -4,6 +4,15 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Someone with this OS setting finds see-through surfaces hard to read —
+   translucent "material" panels (sidebar, inbox, day-content wrapper)
+   should go solid and drop their blur rather than just ignore the signal. */
+@custom-variant reduced-transparency {
+  @media (prefers-reduced-transparency: reduce) {
+    @slot;
+  }
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

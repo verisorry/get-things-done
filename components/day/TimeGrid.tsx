@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import { AnimatePresence, motion } from "motion/react"
 import { X } from "lucide-react"
 
 function setCursor(cursor: string) {
@@ -512,6 +513,7 @@ export function TimeGrid({
           )
         })}
 
+        <AnimatePresence initial={false}>
         {timeBlocked.map((task) => {
           const startMins = timeToMinutes(task.time_start!)
           const endMins = timeToMinutes(task.time_end!)
@@ -536,15 +538,22 @@ export function TimeGrid({
           const { col, cols } = blockColumns[task.id] ?? { col: 0, cols: 1 }
 
           return (
-            <div
+            <motion.div
               key={task.id}
+              // No `layout` here on purpose — top/height during a drag or
+              // settle are already driven by the hand-rolled spring above;
+              // this only materializes the block in/out on schedule/
+              // unschedule, it doesn't touch position.
+              initial={{ opacity: 0, scale: 0.92 }}
+              animate={{ opacity: isBlockCompleted(task) ? 0.4 : 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.92 }}
+              transition={{ type: "spring", bounce: 0, duration: 0.25 }}
               onMouseDown={(e) =>
                 handleMoveStart(task.id, startSlot, duration, e)
               }
               className={cn(
                 "group/block absolute z-20 cursor-grab overflow-hidden rounded-lg border border-black/10 px-2 py-1 active:cursor-grabbing dark:border-white/10",
                 TIER_BLOCK[task.tier],
-                isBlockCompleted(task) && "opacity-40",
                 (isDraggingThis || isSettlingThis) && "z-30 ring-2 ring-ring/30"
               )}
               style={{
@@ -587,9 +596,10 @@ export function TimeGrid({
               >
                 <div className="h-[2px] w-6 rounded-full bg-foreground/30" />
               </div>
-            </div>
+            </motion.div>
           )
         })}
+        </AnimatePresence>
 
         {dragSlot !== null && (
           <div

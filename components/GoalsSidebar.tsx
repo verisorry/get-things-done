@@ -157,7 +157,7 @@ export function GoalsSidebar() {
     <aside
       style={{ width: activePanel ? totalW : RAIL_W }}
       className={cn(
-        "relative flex h-full shrink-0 overflow-hidden border-r border-white/80 bg-white/60 backdrop-blur-[20px] dark:border-r-white/[0.06] dark:bg-white/[0.03]",
+        "relative flex h-full shrink-0 overflow-hidden border-r border-white/80 bg-white/60 backdrop-blur-[20px] reduced-transparency:bg-white reduced-transparency:backdrop-blur-none contrast-more:border-r-2 contrast-more:border-foreground/40 contrast-more:bg-white contrast-more:backdrop-blur-none dark:border-r-white/[0.06] dark:bg-white/[0.03] reduced-transparency:dark:bg-[#1a1a1f] dark:contrast-more:bg-[#1a1a1f]",
         ready && !isResizing && "transition-[width] duration-200 ease-in-out"
       )}
     >
