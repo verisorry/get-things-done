@@ -44,7 +44,7 @@ export function DayPanel({
       className="flex h-full w-[85%] min-w-[380px] shrink-0 flex-col overflow-hidden rounded-[20px] bg-white shadow-card dark:border dark:border-white/[0.06] dark:bg-white/[0.04] dark:shadow-none"
     >
       <div className="flex items-center gap-2.5 px-5 pt-5 pb-1">
-        <span className="text-[22px] font-bold">
+        <span className="text-[22px] font-bold tracking-[-0.01em]">
           {format(parsed, "EEEE")}
         </span>
         <span
@@ -62,7 +62,7 @@ export function DayPanel({
       {total > 0 && (
         <div className="mx-4 mt-1.5 mb-1 h-1 overflow-hidden rounded-full bg-secondary">
           <div
-            className="h-full rounded-full bg-completed transition-all"
+            className="h-full rounded-full bg-completed transition-[width] duration-300 ease-out"
             style={{ width: `${progress * 100}%` }}
           />
         </div>

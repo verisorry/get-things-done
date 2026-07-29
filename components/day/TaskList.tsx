@@ -313,11 +313,11 @@ function GoalRow({
       <button
         onClick={onToggle}
         className={cn(
-          "flex size-4 shrink-0 items-center justify-center rounded-full border border-tier-important transition-colors",
+          "flex size-4 shrink-0 items-center justify-center rounded-full border border-tier-important transition-[colors,transform] duration-150 active:scale-90",
           done && "border-completed bg-completed"
         )}
       >
-        {done && <span className="text-[8px] text-white">✓</span>}
+        {done && <span className="text-[8px] text-white animate-in zoom-in-50 duration-150">✓</span>}
       </button>
       <span
         className={cn(

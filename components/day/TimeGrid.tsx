@@ -12,6 +12,11 @@ import type { MonthlyGoal, Task, TaskTier } from "@/lib/types"
 const SLOT_HEIGHT = 28
 const DEFAULT_DURATION_SLOTS = 2
 
+// Critically damped (no overshoot) settle after a drag/resize release snaps
+// to the slot grid — the block glides the last bit into place instead of
+// popping there. See apple-design skill §4/§5.
+const SPRING_RESPONSE = 0.28
+
 const TIER_BLOCK: Record<TaskTier, string> = {
   focus: "bg-tier-focus-block text-white",
   important: "bg-tier-important-block",
@@ -123,6 +128,24 @@ interface TimeGridProps {
   onMoveBlock?: (blockId: string, timeStart: string, timeEnd: string) => void
 }
 
+// A drag in progress: continuous pixel position, updated 1:1 with the
+// pointer every mousemove — no quantizing mid-gesture. Quantizing only
+// happens once, on release.
+interface DragState {
+  taskId: string
+  top: number
+  height: number
+}
+
+// Post-release glide from the raw drop position to the snapped slot
+// position. Only one dimension animates — top for a move, height for a
+// resize — the other stays fixed at its already-committed value.
+interface SettleState {
+  taskId: string
+  dim: "top" | "height"
+  value: number
+}
+
 export function TimeGrid({
   tasks,
   isToday,
@@ -161,26 +184,78 @@ export function TimeGrid({
   }, [isToday, START_HOUR])
   const [dragSlot, setDragSlot] = useState<number | null>(null)
 
-  const [resizing, setResizing] = useState<{
+  // Live gesture state (continuous px) and the ref mirror mousemove/mouseup
+  // closures read/write so they always see the latest value.
+  const [drag, setDrag] = useState<DragState | null>(null)
+  const dragRef = useRef<{
     taskId: string
-    startSlot: number
-    endSlot: number
+    top: number
+    height: number
   } | null>(null)
 
-  const [moving, setMoving] = useState<{
-    taskId: string
-    startSlot: number
-    duration: number
-  } | null>(null)
+  // Post-release settle spring.
+  const [settle, setSettle] = useState<SettleState | null>(null)
+  const settleAnimRef = useRef<{ raf: number; taskId: string; dim: "top" | "height" } | null>(null)
 
-  const resizeRef = useRef<{ taskId: string; startSlot: number } | null>(null)
-  const resizeEndRef = useRef(0)
-  const moveRef = useRef<{
-    taskId: string
-    duration: number
-    offsetSlots: number
-  } | null>(null)
-  const moveSlotRef = useRef(0)
+  useEffect(() => {
+    return () => {
+      if (settleAnimRef.current) cancelAnimationFrame(settleAnimRef.current.raf)
+    }
+  }, [])
+
+  function cancelSettleIfMatches(taskId: string) {
+    if (settleAnimRef.current?.taskId === taskId) {
+      cancelAnimationFrame(settleAnimRef.current.raf)
+      settleAnimRef.current = null
+      setSettle(null)
+    }
+  }
+
+  function startSettle(taskId: string, dim: "top" | "height", from: number, to: number) {
+    if (settleAnimRef.current) cancelAnimationFrame(settleAnimRef.current.raf)
+
+    if (Math.abs(from - to) < 0.5) {
+      settleAnimRef.current = null
+      setSettle(null)
+      return
+    }
+
+    const w = (2 * Math.PI) / SPRING_RESPONSE
+    let value = from
+    let velocity = 0
+    let lastTime: number | null = null
+
+    const entry = { raf: 0, taskId, dim }
+    settleAnimRef.current = entry
+
+    function frame(now: number) {
+      if (settleAnimRef.current !== entry) return
+      if (lastTime === null) lastTime = now
+      const dt = Math.min((now - lastTime) / 1000, 1 / 30)
+      lastTime = now
+
+      // Exact update for a critically damped spring (damping ratio 1): no
+      // overshoot, settle time governed by SPRING_RESPONSE.
+      const c = value - to
+      const expTerm = Math.exp(-w * dt)
+      const newC = (c + (velocity + w * c) * dt) * expTerm
+      const newV = (velocity - w * (velocity + w * c) * dt) * expTerm
+      value = to + newC
+      velocity = newV
+
+      if (Math.abs(newC) < 0.4 && Math.abs(velocity) < 8) {
+        settleAnimRef.current = null
+        setSettle(null)
+        return
+      }
+
+      setSettle({ taskId, dim, value })
+      entry.raf = requestAnimationFrame(frame)
+    }
+
+    setSettle({ taskId, dim, value })
+    entry.raf = requestAnimationFrame(frame)
+  }
 
   const gridHeight = HOURS.length * SLOT_HEIGHT * 2
 
@@ -193,16 +268,13 @@ export function TimeGrid({
       const startSlot = minutesFromDayStart(startMins, START_HOUR) / 30
       const endSlot = minutesFromDayStart(endMins, START_HOUR) / 30
 
-      const isResizingThis = resizing?.taskId === task.id
-      const isMovingThis = moving?.taskId === task.id
-      const duration = endSlot - startSlot
-
-      const start = isMovingThis ? moving.startSlot : startSlot
-      const end = isResizingThis
-        ? resizing.endSlot
-        : isMovingThis
-          ? moving.startSlot + duration
-          : endSlot
+      const isDraggingThis = drag?.taskId === task.id
+      let start = startSlot
+      let end = endSlot
+      if (isDraggingThis) {
+        start = drag.top / SLOT_HEIGHT
+        end = (drag.top + drag.height) / SLOT_HEIGHT
+      }
 
       return { id: task.id, start, end }
     })
@@ -290,42 +362,54 @@ export function TimeGrid({
     e.preventDefault()
     e.stopPropagation()
 
-    resizeRef.current = { taskId, startSlot }
-    resizeEndRef.current = currentEndSlot
-    setResizing({ taskId, startSlot, endSlot: currentEndSlot })
+    const grid = gridRef.current
+    if (!grid) return
+    const rect = grid.getBoundingClientRect()
+
+    // If this block is mid-settle, grab it from wherever it currently is on
+    // screen rather than snapping back to the committed value first.
+    const liveHeight =
+      settle?.taskId === taskId && settle.dim === "height"
+        ? settle.value
+        : (currentEndSlot - startSlot) * SLOT_HEIGHT
+    cancelSettleIfMatches(taskId)
+
+    const topPx = startSlot * SLOT_HEIGHT
+    const grabOffsetPx = e.clientY - rect.top - (topPx + liveHeight)
+    const minHeight = SLOT_HEIGHT
+    const maxHeight = gridHeight - topPx
+
+    dragRef.current = { taskId, top: topPx, height: liveHeight }
+    setDrag({ taskId, top: topPx, height: liveHeight })
 
     function onMouseMove(ev: MouseEvent) {
-      const grid = gridRef.current
-      if (!grid || !resizeRef.current) return
-      const rect = grid.getBoundingClientRect()
-      const y = ev.clientY - rect.top
-      const slot = Math.ceil(y / SLOT_HEIGHT)
-      const endSlot = Math.max(
-        resizeRef.current.startSlot + 1,
-        Math.min(slot, TOTAL_SLOTS)
-      )
-      resizeEndRef.current = endSlot
-      setResizing({
-        taskId: resizeRef.current.taskId,
-        startSlot: resizeRef.current.startSlot,
-        endSlot,
-      })
+      const g = gridRef.current
+      const d = dragRef.current
+      if (!g || !d) return
+      const r = g.getBoundingClientRect()
+      const rawBottom = ev.clientY - r.top - grabOffsetPx
+      const rawHeight = rawBottom - topPx
+      const clamped = Math.max(minHeight, Math.min(rawHeight, maxHeight))
+      d.height = clamped
+      setDrag({ taskId: d.taskId, top: topPx, height: clamped })
     }
 
     function onMouseUp() {
       document.removeEventListener("mousemove", onMouseMove)
       document.removeEventListener("mouseup", onMouseUp)
       setCursor("")
-      if (resizeRef.current) {
-        const moveBlock = onMoveBlock ?? onDropTask
-        moveBlock(
-          resizeRef.current.taskId,
-          slotToTime(resizeRef.current.startSlot, START_HOUR),
-          slotToTime(resizeEndRef.current, START_HOUR)
-        )
-      }
-      resizeRef.current = null
-      setResizing(null)
+      const d = dragRef.current
+      dragRef.current = null
+      setDrag(null)
+      if (!d) return
+
+      const rawEndSlot = Math.round((topPx + d.height) / SLOT_HEIGHT)
+      const finalEndSlot = Math.max(startSlot + 1, Math.min(rawEndSlot, TOTAL_SLOTS))
+      const finalHeight = (finalEndSlot - startSlot) * SLOT_HEIGHT
+
+      const moveBlock = onMoveBlock ?? onDropTask
+      moveBlock(d.taskId, slotToTime(startSlot, START_HOUR), slotToTime(finalEndSlot, START_HOUR))
+      startSettle(d.taskId, "height", d.height, finalHeight)
     }
 
     setCursor("ns-resize")
@@ -344,47 +428,48 @@ export function TimeGrid({
     const grid = gridRef.current
     if (!grid) return
     const rect = grid.getBoundingClientRect()
-    const y = e.clientY - rect.top
-    const clickedSlot = Math.floor(y / SLOT_HEIGHT)
-    const offsetSlots = clickedSlot - startSlot
 
-    moveRef.current = { taskId, duration, offsetSlots }
-    moveSlotRef.current = startSlot
-    setMoving({ taskId, startSlot, duration })
+    const liveTop =
+      settle?.taskId === taskId && settle.dim === "top"
+        ? settle.value
+        : startSlot * SLOT_HEIGHT
+    cancelSettleIfMatches(taskId)
+
+    const heightPx = duration * SLOT_HEIGHT
+    const grabOffsetPx = e.clientY - rect.top - liveTop
+    const minTop = 0
+    const maxTop = gridHeight - heightPx
+
+    dragRef.current = { taskId, top: liveTop, height: heightPx }
+    setDrag({ taskId, top: liveTop, height: heightPx })
 
     function onMouseMove(ev: MouseEvent) {
       const g = gridRef.current
-      if (!g || !moveRef.current) return
+      const d = dragRef.current
+      if (!g || !d) return
       const r = g.getBoundingClientRect()
-      const my = ev.clientY - r.top
-      const rawSlot = Math.floor(my / SLOT_HEIGHT) - moveRef.current.offsetSlots
-      const clamped = Math.max(
-        0,
-        Math.min(rawSlot, TOTAL_SLOTS - moveRef.current.duration)
-      )
-      moveSlotRef.current = clamped
-      setMoving({
-        taskId: moveRef.current.taskId,
-        startSlot: clamped,
-        duration: moveRef.current.duration,
-      })
+      const rawTop = ev.clientY - r.top - grabOffsetPx
+      const clamped = Math.max(minTop, Math.min(rawTop, maxTop))
+      d.top = clamped
+      setDrag({ taskId: d.taskId, top: clamped, height: d.height })
     }
 
     function onMouseUp() {
       document.removeEventListener("mousemove", onMouseMove)
       document.removeEventListener("mouseup", onMouseUp)
       setCursor("")
-      if (moveRef.current) {
-        const s = moveSlotRef.current
-        const moveBlock = onMoveBlock ?? onDropTask
-        moveBlock(
-          moveRef.current.taskId,
-          slotToTime(s, START_HOUR),
-          slotToTime(s + moveRef.current.duration, START_HOUR)
-        )
-      }
-      moveRef.current = null
-      setMoving(null)
+      const d = dragRef.current
+      dragRef.current = null
+      setDrag(null)
+      if (!d) return
+
+      const rawSlot = Math.round(d.top / SLOT_HEIGHT)
+      const finalSlot = Math.max(0, Math.min(rawSlot, TOTAL_SLOTS - duration))
+      const finalTop = finalSlot * SLOT_HEIGHT
+
+      const moveBlock = onMoveBlock ?? onDropTask
+      moveBlock(d.taskId, slotToTime(finalSlot, START_HOUR), slotToTime(finalSlot + duration, START_HOUR))
+      startSettle(d.taskId, "top", d.top, finalTop)
     }
 
     setCursor("grab")
@@ -430,15 +515,19 @@ export function TimeGrid({
           const endSlot = minutesFromDayStart(endMins, START_HOUR) / 30
           const duration = endSlot - startSlot
 
-          const isResizingThis = resizing?.taskId === task.id
-          const isMovingThis = moving?.taskId === task.id
+          const isDraggingThis = drag?.taskId === task.id
+          const isSettlingThis = settle?.taskId === task.id
 
-          const displayTop = isMovingThis
-            ? moving.startSlot * SLOT_HEIGHT
-            : startSlot * SLOT_HEIGHT
-          const displayHeight = isResizingThis
-            ? (resizing.endSlot - resizing.startSlot) * SLOT_HEIGHT
-            : duration * SLOT_HEIGHT
+          let displayTop = startSlot * SLOT_HEIGHT
+          let displayHeight = duration * SLOT_HEIGHT
+
+          if (isDraggingThis) {
+            displayTop = drag.top
+            displayHeight = drag.height
+          } else if (isSettlingThis) {
+            if (settle.dim === "top") displayTop = settle.value
+            else displayHeight = settle.value
+          }
 
           const { col, cols } = blockColumns[task.id] ?? { col: 0, cols: 1 }
 
@@ -452,7 +541,7 @@ export function TimeGrid({
                 "group/block absolute z-20 cursor-grab overflow-hidden rounded-lg border border-black/10 px-2 py-1 active:cursor-grabbing dark:border-white/10",
                 TIER_BLOCK[task.tier],
                 isBlockCompleted(task) && "opacity-40",
-                (isMovingThis || isResizingThis) && "z-30 ring-2 ring-ring/30"
+                (isDraggingThis || isSettlingThis) && "z-30 ring-2 ring-ring/30"
               )}
               style={{
                 top: Math.max(displayTop, 0),
