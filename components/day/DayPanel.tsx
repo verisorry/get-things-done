@@ -23,7 +23,7 @@ export function DayPanel({
   isToday,
   ref,
 }: DayPanelProps) {
-  const { tasks, addTask, updateTask, deleteTask, upsertTimedBlock, reorderTask } = useDay(date)
+  const { tasks, addTask, updateTask, deleteTask, upsertTimedBlock, addTimeBlock, reorderTask } = useDay(date)
   const { lunch, dinner, upsertMeal } = useMealPlan(date)
   const parsed = parseISO(date)
   const { goals, toggleDate } = useMonthlyGoals(getYear(parsed), getMonth(parsed) + 1)
@@ -109,14 +109,40 @@ export function DayPanel({
           goals={goals}
           startHour={settings.dayStartHour}
           endHour={settings.dayEndHour}
-          onDropTask={(taskId, timeStart, timeEnd) =>
-            updateTask(taskId, { time_start: timeStart, time_end: timeEnd })
+          onDropTask={(taskId, timeStart, timeEnd) => {
+            // Dragging a task out of the list always adds a working block —
+            // the first drop fills the task's own slot, later drops (e.g.
+            // splitting the task across two sessions) create extra blocks
+            // instead of moving the one that's already scheduled.
+            const target = tasks.find((t) => t.id === taskId)
+            if (!target) return
+            if (!target.time_start) {
+              updateTask(taskId, { time_start: timeStart, time_end: timeEnd })
+            } else {
+              addTimeBlock(`task:${taskId}`, target.title, target.tier, timeStart, timeEnd)
+            }
+          }}
+          onMoveBlock={(blockId, timeStart, timeEnd) =>
+            updateTask(blockId, { time_start: timeStart, time_end: timeEnd })
           }
-          onUnscheduleTask={(taskId) =>
-            updateTask(taskId, { time_start: null, time_end: null })
-          }
+          onUnscheduleTask={(blockId) => {
+            // Task and goal blocks are always phantom rows created purely to
+            // represent a slot on the grid, and a task/goal can have more
+            // than one — so unscheduling deletes that specific block rather
+            // than leaving a dangling null-time row behind. Meal blocks are
+            // still a single upserted row per meal, so those just get cleared.
+            const block = tasks.find((t) => t.id === blockId)
+            const isSplittable = block?.source?.startsWith("task:") || block?.source?.startsWith("goal:")
+            if (isSplittable) {
+              deleteTask(blockId)
+            } else {
+              updateTask(blockId, { time_start: null, time_end: null })
+            }
+          }}
           onDropGoal={(goalId, goalTitle, timeStart, timeEnd) =>
-            upsertTimedBlock(`goal:${goalId}`, goalTitle, "important", timeStart, timeEnd)
+            // Every drop adds a new block (rather than upserting a single one)
+            // so a goal can be split across multiple sessions, same as tasks.
+            addTimeBlock(`goal:${goalId}`, goalTitle, "important", timeStart, timeEnd)
           }
           onDropMeal={(mealTitle, timeStart, timeEnd, mealType) =>
             upsertTimedBlock(`meal:${mealType}`, mealTitle, "other", timeStart, timeEnd)

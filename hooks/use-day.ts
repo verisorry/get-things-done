@@ -143,16 +143,54 @@ export function useDay(date: string) {
   )
 
   const deleteTask = useCallback(async (id: string) => {
+    const childBlockIds = tasksRef.current
+      .filter((t) => t.source === `task:${id}`)
+      .map((t) => t.id)
+    const idsToDelete = [id, ...childBlockIds]
+
     if (demo) {
-      demo.setTasks((prev) => prev.filter((t) => t.id !== id))
+      demo.setTasks((prev) => prev.filter((t) => !idsToDelete.includes(t.id)))
       return
     }
 
-    setTasks((prev) => prev.filter((t) => t.id !== id))
+    setTasks((prev) => prev.filter((t) => !idsToDelete.includes(t.id)))
     const supabase = createClient()
-    const { error } = await supabase.from("tasks").delete().eq("id", id)
+    const { error } = await supabase.from("tasks").delete().in("id", idsToDelete)
     if (error) console.error("Failed to delete task:", error)
   }, [demo])
+
+  // Always inserts a new phantom block row, never reuses/moves an existing
+  // one — so a task or monthly goal can be split across multiple slots on
+  // the time grid by dragging it out of the list more than once.
+  const addTimeBlock = useCallback(
+    (source: string, title: string, tier: TaskTier, timeStart: string, timeEnd: string) => {
+      const newBlock: Task = {
+        id: crypto.randomUUID(),
+        date,
+        title,
+        tier,
+        time_start: timeStart,
+        time_end: timeEnd,
+        completed: false,
+        notes: null,
+        source,
+        position: 0,
+        created_at: new Date().toISOString(),
+      }
+
+      if (demo) {
+        demo.setTasks((prev) => [...prev, newBlock])
+        return
+      }
+
+      setTasks((prev) => [...prev, newBlock])
+      const supabase = createClient()
+      supabase.from("tasks").insert(newBlock).then(({ error }) => {
+        if (error) console.error("Failed to add time block:", error)
+      })
+    },
+    [date, demo]
+  )
 
   const upsertTimedBlock = useCallback(
     async (source: string, title: string, tier: TaskTier, timeStart: string, timeEnd: string) => {
@@ -219,5 +257,5 @@ export function useDay(date: string) {
     [date, demo]
   )
 
-  return { tasks: demoTasks, loading, addTask, updateTask, deleteTask, upsertTimedBlock, reorderTask }
+  return { tasks: demoTasks, loading, addTask, updateTask, deleteTask, upsertTimedBlock, addTimeBlock, reorderTask }
 }

@@ -61,6 +61,10 @@ interface TimeGridProps {
   onDropGoal?: (goalId: string, goalTitle: string, timeStart: string, timeEnd: string) => void
   onDropMeal?: (mealTitle: string, timeStart: string, timeEnd: string, mealType: string) => void
   onUnscheduleTask?: (taskId: string) => void
+  // Moving/resizing a block already on the grid always repositions that exact
+  // row. Distinct from onDropTask, which (for tasks) adds a new block instead
+  // of moving one, so a task can be split across multiple slots.
+  onMoveBlock?: (blockId: string, timeStart: string, timeEnd: string) => void
 }
 
 export function TimeGrid({
@@ -74,6 +78,7 @@ export function TimeGrid({
   onDropGoal,
   onDropMeal,
   onUnscheduleTask,
+  onMoveBlock,
 }: TimeGridProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const gridRef = useRef<HTMLDivElement>(null)
@@ -119,9 +124,15 @@ export function TimeGrid({
 
   function isBlockCompleted(task: Task) {
     if (task.completed) return true
-    if (!task.source?.startsWith("goal:")) return false
-    const goalId = task.source.slice("goal:".length)
-    return goals.some((g) => g.id === goalId && g.completed_dates.includes(date))
+    if (task.source?.startsWith("goal:")) {
+      const goalId = task.source.slice("goal:".length)
+      return goals.some((g) => g.id === goalId && g.completed_dates.includes(date))
+    }
+    if (task.source?.startsWith("task:")) {
+      const parentId = task.source.slice("task:".length)
+      return tasks.find((t) => t.id === parentId)?.completed ?? false
+    }
+    return false
   }
 
   const getSlotFromEvent = useCallback((e: React.DragEvent) => {
@@ -220,7 +231,8 @@ export function TimeGrid({
       document.removeEventListener("mouseup", onMouseUp)
       setCursor("")
       if (resizeRef.current) {
-        onDropTask(
+        const moveBlock = onMoveBlock ?? onDropTask
+        moveBlock(
           resizeRef.current.taskId,
           slotToTime(resizeRef.current.startSlot, START_HOUR),
           slotToTime(resizeEndRef.current, START_HOUR)
@@ -278,7 +290,8 @@ export function TimeGrid({
       setCursor("")
       if (moveRef.current) {
         const s = moveSlotRef.current
-        onDropTask(
+        const moveBlock = onMoveBlock ?? onDropTask
+        moveBlock(
           moveRef.current.taskId,
           slotToTime(s, START_HOUR),
           slotToTime(s + moveRef.current.duration, START_HOUR)
