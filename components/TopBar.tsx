@@ -39,7 +39,6 @@ export function TopBar({ currentDate, onTodayClick }: TopBarProps) {
       </Button>
 
       <div className="flex items-center gap-2">
-        <Image src="/logo.png" alt="GTD" width={20} height={20} className="rounded-[5px]" />
         <span className="text-sm font-medium tracking-tight">
           {format(date, "EEEE, MMMM d")}
         </span>
@@ -78,7 +77,6 @@ export function TopBar({ currentDate, onTodayClick }: TopBarProps) {
             className="gap-1.5 text-xs text-muted-foreground"
           >
             <LogOut className="size-3.5" />
-            Sign out
           </Button>
         )}
       </div>
