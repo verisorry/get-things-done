@@ -50,6 +50,62 @@ function slotToTime(slot: number, startHour: number): string {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00`
 }
 
+// Assigns each overlapping block a column index and the total column count of
+// its overlap cluster, so simultaneous blocks render side by side instead of
+// stacking on top of one another (same approach calendar day views use).
+function computeBlockColumns(
+  blocks: { id: string; start: number; end: number }[]
+): Record<string, { col: number; cols: number }> {
+  const sorted = [...blocks].sort((a, b) => a.start - b.start || a.end - b.end)
+
+  const assignment: Record<string, number> = {}
+  const clusterOf: Record<string, number> = {}
+  const clusterMaxCols: Record<number, number> = {}
+
+  let columnEnds: number[] = []
+  let clusterEnd = -Infinity
+  let clusterId = -1
+
+  for (const block of sorted) {
+    if (block.start >= clusterEnd) {
+      columnEnds = []
+      clusterEnd = -Infinity
+      clusterId++
+    }
+
+    let colIndex = columnEnds.findIndex((end) => block.start >= end)
+    if (colIndex === -1) {
+      colIndex = columnEnds.length
+      columnEnds.push(block.end)
+    } else {
+      columnEnds[colIndex] = block.end
+    }
+
+    assignment[block.id] = colIndex
+    clusterOf[block.id] = clusterId
+    clusterEnd = Math.max(clusterEnd, block.end)
+    clusterMaxCols[clusterId] = Math.max(clusterMaxCols[clusterId] ?? 0, colIndex + 1)
+  }
+
+  const result: Record<string, { col: number; cols: number }> = {}
+  for (const id of Object.keys(assignment)) {
+    result[id] = { col: assignment[id], cols: clusterMaxCols[clusterOf[id]] }
+  }
+  return result
+}
+
+const BLOCK_GAP = 3
+
+function getBlockRect(col: number, cols: number): React.CSSProperties {
+  if (cols <= 1) {
+    return { left: "3.5rem", right: "0.25rem" }
+  }
+  const totalGap = BLOCK_GAP * (cols - 1)
+  const width = `calc((100% - 3.5rem - 0.25rem - ${totalGap}px) / ${cols})`
+  const left = `calc(3.5rem + (${width} + ${BLOCK_GAP}px) * ${col})`
+  return { left, width }
+}
+
 interface TimeGridProps {
   tasks: Task[]
   isToday: boolean
@@ -121,6 +177,28 @@ export function TimeGrid({
   const gridHeight = HOURS.length * SLOT_HEIGHT * 2
 
   const timeBlocked = tasks.filter((t) => t.time_start && t.time_end)
+
+  const blockColumns = computeBlockColumns(
+    timeBlocked.map((task) => {
+      const startMins = timeToMinutes(task.time_start!)
+      const endMins = timeToMinutes(task.time_end!)
+      const startSlot = minutesFromDayStart(startMins, START_HOUR) / 30
+      const endSlot = minutesFromDayStart(endMins, START_HOUR) / 30
+
+      const isResizingThis = resizing?.taskId === task.id
+      const isMovingThis = moving?.taskId === task.id
+      const duration = endSlot - startSlot
+
+      const start = isMovingThis ? moving.startSlot : startSlot
+      const end = isResizingThis
+        ? resizing.endSlot
+        : isMovingThis
+          ? moving.startSlot + duration
+          : endSlot
+
+      return { id: task.id, start, end }
+    })
+  )
 
   function isBlockCompleted(task: Task) {
     if (task.completed) return true
@@ -354,6 +432,8 @@ export function TimeGrid({
             ? (resizing.endSlot - resizing.startSlot) * SLOT_HEIGHT
             : duration * SLOT_HEIGHT
 
+          const { col, cols } = blockColumns[task.id] ?? { col: 0, cols: 1 }
+
           return (
             <div
               key={task.id}
@@ -361,7 +441,7 @@ export function TimeGrid({
                 handleMoveStart(task.id, startSlot, duration, e)
               }
               className={cn(
-                "group/block absolute right-1 left-14 z-20 cursor-grab overflow-hidden rounded-lg border border-black/10 px-2 py-1 active:cursor-grabbing dark:border-white/10",
+                "group/block absolute z-20 cursor-grab overflow-hidden rounded-lg border border-black/10 px-2 py-1 active:cursor-grabbing dark:border-white/10",
                 TIER_BLOCK[task.tier],
                 isBlockCompleted(task) && "opacity-40",
                 (isMovingThis || isResizingThis) && "z-30 ring-2 ring-ring/30"
@@ -369,6 +449,7 @@ export function TimeGrid({
               style={{
                 top: Math.max(displayTop, 0),
                 height: Math.max(displayHeight, SLOT_HEIGHT),
+                ...getBlockRect(col, cols),
               }}
             >
               {onUnscheduleTask && (
