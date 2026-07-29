@@ -7,7 +7,7 @@ function setCursor(cursor: string) {
   document.body.style.cursor = cursor
 }
 import { cn } from "@/lib/utils"
-import type { Task, TaskTier } from "@/lib/types"
+import type { MonthlyGoal, Task, TaskTier } from "@/lib/types"
 
 const SLOT_HEIGHT = 28
 const DEFAULT_DURATION_SLOTS = 2
@@ -53,6 +53,8 @@ function slotToTime(slot: number, startHour: number): string {
 interface TimeGridProps {
   tasks: Task[]
   isToday: boolean
+  date: string
+  goals?: MonthlyGoal[]
   startHour?: number
   endHour?: number
   onDropTask: (taskId: string, timeStart: string, timeEnd: string) => void
@@ -64,6 +66,8 @@ interface TimeGridProps {
 export function TimeGrid({
   tasks,
   isToday,
+  date,
+  goals = [],
   startHour: START_HOUR = 0,
   endHour: END_HOUR = 24,
   onDropTask,
@@ -112,6 +116,13 @@ export function TimeGrid({
   const gridHeight = HOURS.length * SLOT_HEIGHT * 2
 
   const timeBlocked = tasks.filter((t) => t.time_start && t.time_end)
+
+  function isBlockCompleted(task: Task) {
+    if (task.completed) return true
+    if (!task.source?.startsWith("goal:")) return false
+    const goalId = task.source.slice("goal:".length)
+    return goals.some((g) => g.id === goalId && g.completed_dates.includes(date))
+  }
 
   const getSlotFromEvent = useCallback((e: React.DragEvent) => {
     const el = gridRef.current
@@ -339,7 +350,7 @@ export function TimeGrid({
               className={cn(
                 "group/block absolute right-1 left-14 z-20 cursor-grab overflow-hidden rounded-lg border border-black/10 px-2 py-1 active:cursor-grabbing dark:border-white/10",
                 TIER_BLOCK[task.tier],
-                task.completed && "opacity-40",
+                isBlockCompleted(task) && "opacity-40",
                 (isMovingThis || isResizingThis) && "z-30 ring-2 ring-ring/30"
               )}
               style={{

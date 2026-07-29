@@ -105,6 +105,8 @@ export function DayPanel({
         <TimeGrid
           tasks={tasks}
           isToday={isToday}
+          date={date}
+          goals={goals}
           startHour={settings.dayStartHour}
           endHour={settings.dayEndHour}
           onDropTask={(taskId, timeStart, timeEnd) =>
